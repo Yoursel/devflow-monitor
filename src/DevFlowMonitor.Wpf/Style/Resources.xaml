@@ -1,0 +1,10 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <FontFamily x:Key="MainFont">pack://application:,,,/Style/Fonts/#VCR OSD Mono [NolivantNT Edit]</FontFamily>
+    <BitmapImage x:Key="DashboardIcon"
+                 UriSource="pack://application:,,,/Style/Icons/DashboardIcon.png"/>
+    <BitmapImage x:Key="SettingsIcon"
+                 UriSource="pack://application:,,,/Style/Icons/SettingsIcon.png"/>
+    <BitmapImage x:Key="BranchIcon"
+                 UriSource="pack://application:,,,/Style/Icons/BranchIcon.png"/>
+</ResourceDictionary>

@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:viewModel="clr-namespace:DevFlowMonitor.Wpf.ViewModel"
+                    xmlns:view="clr-namespace:DevFlowMonitor.Wpf.View">
+
+    <DataTemplate DataType="{x:Type viewModel:DashboardViewModel}">
+        <view:DashboardView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type viewModel:PipelinesViewModel}">
+        <view:PipelinesView/>
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type viewModel:SettingsViewModel}">
+        <view:SettingsView/>
+    </DataTemplate>
+
+</ResourceDictionary>

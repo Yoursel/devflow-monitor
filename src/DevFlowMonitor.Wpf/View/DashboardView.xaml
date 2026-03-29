@@ -1,9 +1,52 @@
 <UserControl x:Class="DevFlowMonitor.Wpf.View.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008">
-    <Grid>
-        <TextBlock>Дашборд</TextBlock>
+             xmlns:viewModel="clr-namespace:DevFlowMonitor.Wpf.ViewModel"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModel:DashboardViewModel}">
+    <Grid Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Dashboard</TextBlock>
+        <TextBlock Grid.Row="1" Style="{StaticResource SectionTitle}">Статистика за сегодня</TextBlock>
+
+        <ItemsControl Grid.Row="2"
+                      ItemsSource="{Binding StatusCards, UpdateSourceTrigger=PropertyChanged}"
+                      Style="{StaticResource SectionContent}"
+                      HorizontalAlignment="Stretch">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
+
+        <TextBlock Grid.Row="3" Style="{StaticResource SectionTitle}">Последние запуски</TextBlock>
+
+        <ListView Grid.Row="4"
+                  ItemsSource="{Binding PipelineRuns}"
+                  Style="{StaticResource PipelineListStyle}"
+                  ItemContainerStyle="{StaticResource PipelineRowStyle}">
+            <ListView.View>
+                <GridView ColumnHeaderContainerStyle="{StaticResource PipelineColumnHeaderStyle}">
+                    <GridViewColumn Header="СТАТУС" Width="120"
+                                    CellTemplate="{StaticResource StatusBadgeTemplate}" />
+                    <GridViewColumn Header="ПАЙПЛАЙН" Width="200"
+                                    DisplayMemberBinding="{Binding PipelineName}" />
+                    <GridViewColumn Header="ВЕТКА" Width="200"
+                                    DisplayMemberBinding="{Binding Branch}" />
+                    <GridViewColumn Header="ВРЕМЯ" Width="150"
+                                    DisplayMemberBinding="{Binding TimeAgo}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
     </Grid>
 </UserControl>

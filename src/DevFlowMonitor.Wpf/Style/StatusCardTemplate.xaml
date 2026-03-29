@@ -1,0 +1,104 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:models="clr-namespace:DevFlowMonitor.Wpf.ViewModel">
+
+    <Color x:Key="TotalAccent">#FFE0A0</Color>
+    <Color x:Key="TotalAccentTextColor">#5c4a1e</Color>
+    <Color x:Key="SuccessAccent">#A2EFB7</Color>
+    <Color x:Key="SuccessAccentTextColor">#1a4a2e</Color>
+    <Color x:Key="FailedAccent">#F4A8A8</Color>
+    <Color x:Key="FailedAccentTextColor">#5c1a1a</Color>
+
+    <DataTemplate DataType="{x:Type models:StatusCardViewModel}">
+        <Border x:Name="Root"
+                CornerRadius="6"
+                Background="#FFFEF8"
+                Margin="0 0 5 0"
+                BorderThickness="2"
+                BorderBrush="#C8BFA8">
+            <StackPanel>
+                <Border x:Name="Header"
+
+                        CornerRadius="5,5,0,0">
+                    <TextBlock x:Name="TitleText"
+                               Margin="10"
+                               Text="{Binding Title}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontSize="13"
+                               />
+                </Border>
+
+                <TextBlock x:Name="ValueText"
+                           Margin="10"
+                           Text="{Binding Value}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="36"
+                           FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Type}" Value="Total">
+
+                <Setter TargetName="Header" Property="Background">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource TotalAccent}" />
+                    </Setter.Value>
+                </Setter>
+
+                <Setter TargetName="TitleText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource TotalAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+                <Setter TargetName="ValueText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource TotalAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+            </DataTrigger>
+
+            <DataTrigger Binding="{Binding Type}" Value="Success">
+
+                <Setter TargetName="Header" Property="Background">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource SuccessAccent}" />
+                    </Setter.Value>
+                </Setter>
+
+                <Setter TargetName="TitleText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource SuccessAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+                <Setter TargetName="ValueText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource SuccessAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+            </DataTrigger>
+
+            <DataTrigger Binding="{Binding Type}" Value="Failed">
+
+                <Setter TargetName="Header" Property="Background">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource FailedAccent}" />
+                    </Setter.Value>
+                </Setter>
+
+                <Setter TargetName="TitleText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource FailedAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+                <Setter TargetName="ValueText" Property="Foreground">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{StaticResource FailedAccentTextColor}" />
+                    </Setter.Value>
+                </Setter>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+</ResourceDictionary>

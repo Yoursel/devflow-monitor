@@ -50,8 +50,8 @@
         </StackPanel>
 
         <ContentControl Grid.Column="1"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
                         Content="{Binding CurrentViewModel}"/>
     </Grid>
 </Window>

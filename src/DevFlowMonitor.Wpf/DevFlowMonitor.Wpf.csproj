@@ -13,12 +13,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="Styles\VCROSDMono[NolivantNTEdit]-Regular.ttf">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
-    </ItemGroup>
-
-    <ItemGroup>
       <Page Update="View\MainWindow.xaml">
         <Generator>MSBuild:Compile</Generator>
         <XamlRuntime>Wpf</XamlRuntime>

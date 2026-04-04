@@ -1,0 +1,87 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:models="clr-namespace:DevFlowMonitor.Wpf.ViewModel">
+
+    <DataTemplate DataType="{x:Type models:PipelineViewModel}">
+        <Border x:Name="Root"
+                CornerRadius="6"
+                Background="{StaticResource CardBackground}"
+                Margin="0 0 5 15"
+                BorderThickness="2"
+                ClipToBounds="True"
+                BorderBrush="{StaticResource CardBorderBrush}">
+            <StackPanel>
+                <Border x:Name="Header"
+                        CornerRadius="5,5,0,0">
+                    <TextBlock x:Name="TitleText"
+                               Margin="5 10 0 10"
+                               Text="{Binding PipelineName}"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center"
+                               FontSize="13" />
+                </Border>
+
+                <Grid Background="{StaticResource CardBackground}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="15"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Rectangle x:Name="StatusBlock" Grid.Column="0" Grid.RowSpan="3"
+                               Width="5" Height="Auto" HorizontalAlignment="Left"/>
+
+                    <WrapPanel HorizontalAlignment="Right" Grid.Row="0" Grid.Column="2" Margin="0 5 10 10">
+                        <TextBlock Text="7" Margin="0 0 10 0" FontWeight="Bold"
+                                   Foreground="{StaticResource SuccessAccentBlockBrush}"/>
+                        <TextBlock Text="17" Margin="0 0 10 0" FontWeight="Bold"
+                                   Foreground="{StaticResource FailedAccentBlockBrush}"/>
+                    </WrapPanel>
+
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding PipelineName}"
+                               FontWeight="Bold" FontSize="16" Margin="0 5 0 10"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Branch}"
+                               Foreground="{StaticResource MutedForeground}" Margin="0 0 0 10"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TimeAgo}"
+                               Foreground="{StaticResource MutedForeground}" Margin="0 0 0 5"/>
+
+                    <Button Style="{StaticResource SecondaryButton}"
+                            Grid.Row="2" Grid.Column="2"
+                            HorizontalAlignment="Right" Margin="5" Width="160">
+                        <Button.Content>
+                            <WrapPanel>
+                                <Image Source="{StaticResource RefreshIcon}"/>
+                                <TextBlock>Синхронизировать</TextBlock>
+                            </WrapPanel>
+                        </Button.Content>
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding Status}" Value="Running">
+                <Setter TargetName="Header"      Property="Background" Value="{StaticResource TotalAccentBrush}"/>
+                <Setter TargetName="TitleText"   Property="Foreground" Value="{StaticResource TotalAccentTextBrush}"/>
+                <Setter TargetName="StatusBlock" Property="Fill"       Value="{StaticResource TotalAccentBlockBrush}"/>
+            </DataTrigger>
+
+            <DataTrigger Binding="{Binding Status}" Value="Success">
+                <Setter TargetName="Header"      Property="Background" Value="{StaticResource SuccessAccentBrush}"/>
+                <Setter TargetName="TitleText"   Property="Foreground" Value="{StaticResource SuccessAccentTextBrush}"/>
+                <Setter TargetName="StatusBlock" Property="Fill"       Value="{StaticResource SuccessAccentBlockBrush}"/>
+            </DataTrigger>
+
+            <DataTrigger Binding="{Binding Status}" Value="Failed">
+                <Setter TargetName="Header"      Property="Background" Value="{StaticResource FailedAccentBrush}"/>
+                <Setter TargetName="TitleText"   Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
+                <Setter TargetName="StatusBlock" Property="Fill"       Value="{StaticResource FailedAccentBlockBrush}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+</ResourceDictionary>

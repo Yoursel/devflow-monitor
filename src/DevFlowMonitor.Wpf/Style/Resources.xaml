@@ -1,10 +1,49 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
     <FontFamily x:Key="MainFont">pack://application:,,,/Style/Fonts/#VCR OSD Mono [NolivantNT Edit]</FontFamily>
-    <BitmapImage x:Key="DashboardIcon"
-                 UriSource="pack://application:,,,/Style/Icons/DashboardIcon.png"/>
-    <BitmapImage x:Key="SettingsIcon"
-                 UriSource="pack://application:,,,/Style/Icons/SettingsIcon.png"/>
-    <BitmapImage x:Key="BranchIcon"
-                 UriSource="pack://application:,,,/Style/Icons/BranchIcon.png"/>
+
+    <BitmapImage x:Key="DashboardIcon" UriSource="pack://application:,,,/Style/Icons/DashboardIcon.png"/>
+    <BitmapImage x:Key="SettingsIcon"  UriSource="pack://application:,,,/Style/Icons/SettingsIcon.png"/>
+    <BitmapImage x:Key="BranchIcon"    UriSource="pack://application:,,,/Style/Icons/BranchIcon.png"/>
+    <BitmapImage x:Key="AddIcon"       UriSource="pack://application:,,,/Style/Icons/AddIcon.png"/>
+    <BitmapImage x:Key="RefreshIcon"   UriSource="pack://application:,,,/Style/Icons/RefreshIcon.png"/>
+    <BitmapImage x:Key="FirstPageIcon"    UriSource="pack://application:,,,/Style/Icons/FirstPageIcon.png"/>
+    <BitmapImage x:Key="PreviousPageIcon" UriSource="pack://application:,,,/Style/Icons/PreviousPageIcon.png"/>
+    <BitmapImage x:Key="NextPageIcon"     UriSource="pack://application:,,,/Style/Icons/NextPageIcon.png"/>
+    <BitmapImage x:Key="LastPageIcon"     UriSource="pack://application:,,,/Style/Icons/LastPageIcon.png"/>
+
+    <SolidColorBrush x:Key="CardBackground"  Color="#FFFEF8"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#C8BFA8"/>
+    <SolidColorBrush x:Key="MutedForeground" Color="#7A7468"/>
+
+    <Color x:Key="TotalAccent">#FFE0A0</Color>
+    <Color x:Key="TotalAccentTextColor">#5c4a1e</Color>
+    <Color x:Key="TotalAccentBlockColor">#eab308</Color>
+    <Color x:Key="SuccessAccent">#A2EFB7</Color>
+    <Color x:Key="SuccessAccentTextColor">#1a4a2e</Color>
+    <Color x:Key="SuccessAccentBlockColor">#22c55e</Color>
+    <Color x:Key="FailedAccent">#F4A8A8</Color>
+    <Color x:Key="FailedAccentTextColor">#5c1a1a</Color>
+    <Color x:Key="FailedAccentBlockColor">#ef4444</Color>
+
+    <SolidColorBrush x:Key="TotalAccentBrush"      Color="{StaticResource TotalAccent}"/>
+    <SolidColorBrush x:Key="TotalAccentTextBrush"   Color="{StaticResource TotalAccentTextColor}"/>
+    <SolidColorBrush x:Key="TotalAccentBlockBrush"  Color="{StaticResource TotalAccentBlockColor}"/>
+    <SolidColorBrush x:Key="SuccessAccentBrush"     Color="{StaticResource SuccessAccent}"/>
+    <SolidColorBrush x:Key="SuccessAccentTextBrush" Color="{StaticResource SuccessAccentTextColor}"/>
+    <SolidColorBrush x:Key="SuccessAccentBlockBrush" Color="{StaticResource SuccessAccentBlockColor}"/>
+    <SolidColorBrush x:Key="FailedAccentBrush"      Color="{StaticResource FailedAccent}"/>
+    <SolidColorBrush x:Key="FailedAccentTextBrush"  Color="{StaticResource FailedAccentTextColor}"/>
+    <SolidColorBrush x:Key="FailedAccentBlockBrush" Color="{StaticResource FailedAccentBlockColor}"/>
+
+    <SolidColorBrush x:Key="SuccessFg" Color="#1A4A2E"/>
+    <SolidColorBrush x:Key="SuccessBg" Color="#BBF0CE"/>
+    <SolidColorBrush x:Key="FailedFg"  Color="#5C1A1A"/>
+    <SolidColorBrush x:Key="FailedBg"  Color="#FCC8C8"/>
+    <SolidColorBrush x:Key="RunningFg" Color="#92400E"/>
+    <SolidColorBrush x:Key="RunningBg" Color="#FEF3C7"/>
+    <SolidColorBrush x:Key="TableHeaderBackground" Color="#B8D4F0"/>
+    <SolidColorBrush x:Key="TableHeaderForeground" Color="#1A2E4A"/>
+
 </ResourceDictionary>

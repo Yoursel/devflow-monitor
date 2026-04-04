@@ -7,7 +7,7 @@
         <view:DashboardView/>
     </DataTemplate>
 
-    <DataTemplate DataType="{x:Type viewModel:PipelinesViewModel}">
+    <DataTemplate DataType="{x:Type viewModel:PipelinesListViewModel}">
         <view:PipelinesView/>
     </DataTemplate>
 

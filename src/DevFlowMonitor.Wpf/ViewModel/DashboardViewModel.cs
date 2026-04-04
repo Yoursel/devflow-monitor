@@ -7,7 +7,7 @@ namespace DevFlowMonitor.Wpf.ViewModel;
 public class DashboardViewModel : INotifyPropertyChanged
 {
 
-    public ObservableCollection<PipelinesViewModel> PipelineRuns { get; } =
+    public ObservableCollection<PipelineViewModel> PipelineRuns { get; } =
     [
         new()
         {

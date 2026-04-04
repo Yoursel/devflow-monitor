@@ -2,7 +2,7 @@ using DevFlowMonitor.Wpf.Model;
 
 namespace DevFlowMonitor.Wpf.ViewModel;
 
-public class PipelinesViewModel
+public class PipelineViewModel
 {
     public PipelineStatus Status { get; init; }
     public string PipelineName { get; init; } = "";

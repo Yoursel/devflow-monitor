@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="Style/ViewTemplates.xaml"/>
                 <ResourceDictionary Source="Style/StatusCardTemplate.xaml"/>
                 <ResourceDictionary Source="Style/PipelineTableTemplate.xaml"/>
+                <ResourceDictionary Source="Style/PipelineItemStyle.xaml"/>    
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

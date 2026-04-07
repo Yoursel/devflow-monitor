@@ -3,8 +3,87 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d">
-    <Grid>
-        <TextBlock>Настройки</TextBlock>
+             xmlns:viewModel="clr-namespace:DevFlowMonitor.Wpf.ViewModel"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModel:SettingsViewModel}">
+    <Grid Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Настройки</TextBlock>
+
+        <Border Grid.Row="1"
+                CornerRadius="8"
+                Background="{StaticResource CardBackground}"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1.5"
+                Style="{StaticResource SectionContent}">
+            <StackPanel>
+                <Border Style="{StaticResource FormSectionHeader}">
+                    <TextBlock Foreground="{StaticResource TableHeaderForeground}"
+                               FontSize="10">КОНФИГУРАЦИЯ</TextBlock>
+                </Border>
+
+                <StackPanel Margin="24">
+                    <TextBlock Style="{StaticResource FormFieldLabel}">URL API</TextBlock>
+                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                        <TextBox Style="{StaticResource FormInput}"
+                                 Text="{Binding ApiUrl, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Border>
+                    <TextBlock Style="{StaticResource FormFieldLabel}">Имя пользователя</TextBlock>
+                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                        <TextBox Style="{StaticResource FormInput}"
+                                 Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Border>
+                    <TextBlock Style="{StaticResource FormFieldLabel}">Пароль</TextBlock>
+                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                        <PasswordBox Style="{StaticResource FormPasswordBox}"
+                                     PasswordChanged="PasswordField_PasswordChanged"
+                                     x:Name="PasswordField"/>
+                    </Border>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource SecondaryButton}"
+                                Command="{Binding CheckConnectionCommand}">
+                            <Button.Content>
+                                <TextBlock>Проверить подключение</TextBlock>
+                            </Button.Content>
+                        </Button>
+
+                        <Button Style="{StaticResource MainButton}"
+                                Command="{Binding SaveCommand}"
+                                Width="120">
+                            <Button.Content>
+                                <TextBlock HorizontalAlignment="Center">Сохранить</TextBlock>
+                            </Button.Content>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <Border Grid.Row="2"
+                CornerRadius="8"
+                Background="#F8F3E8"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1.5"
+                Padding="16"
+                HorizontalAlignment="Left"
+                Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8"
+                         Fill="#3D8B5E"
+                         VerticalAlignment="Center"
+                         Margin="0 0 8 0"/>
+                <TextBlock Foreground="#3D8B5E"
+                           FontSize="13">Подключено</TextBlock>
+                <TextBlock Foreground="{StaticResource MutedForeground}"
+                           FontSize="13"
+                           Margin="8 0 0 0"
+                           Text="{Binding StatusMessage, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

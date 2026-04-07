@@ -126,6 +126,44 @@
         </Setter>
     </Style>
 
+    <Style x:Key="FormInput" TargetType="TextBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="12 8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontFamily" Value="{StaticResource MainFont}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="CaretBrush" Value="#2D2E27"/>
+    </Style>
+
+    <Style x:Key="FormPasswordBox" TargetType="PasswordBox">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="12 8"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontFamily" Value="{StaticResource MainFont}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="CaretBrush" Value="#2D2E27"/>
+    </Style>
+
+    <Style x:Key="FormInputBorder" TargetType="Border">
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Background" Value="#FBF3E6"/>
+        <Setter Property="BorderBrush" Value="#D4C9B8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="FormFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Margin" Value="0 0 0 6"/>
+    </Style>
+
+    <Style x:Key="FormSectionHeader" TargetType="Border">
+        <Setter Property="CornerRadius" Value="8,8,0,0"/>
+        <Setter Property="Background" Value="{StaticResource TableHeaderBackground}"/>
+        <Setter Property="Padding" Value="10 6"/>
+    </Style>
+
     <Style TargetType="ScrollBar">
         <Setter Property="Width" Value="10"/>
         <Setter Property="Template">

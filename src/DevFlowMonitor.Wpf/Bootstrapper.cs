@@ -3,6 +3,7 @@ using DevFlowMonitor.Wpf.Service;
 using DevFlowMonitor.Wpf.View;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DevFlowMonitor.Wpf;
 
@@ -17,7 +18,22 @@ public class Bootstrapper
 
     private static void RegisterServices(IServiceCollection services)
     {
+        services.AddLogging(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Information);
+
+            builder.AddFilter("Microsoft", LogLevel.Warning);
+            builder.AddFilter("System", LogLevel.Warning);
+            builder.AddFilter("DevFlowMonitor", LogLevel.Debug);
+
+#if DEBUG
+            builder.AddDebug();
+#endif
+        });
+        
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IAppSettingsService, AppSettingsService>();
+        
         RegisterViews(services);
         RegisterViewModels(services);
     }

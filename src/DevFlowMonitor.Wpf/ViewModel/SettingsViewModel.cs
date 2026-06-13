@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Windows.Input;
+using DevFlowMonitor.Contracts;
 using DevFlowMonitor.Wpf.Command;
 using DevFlowMonitor.Wpf.Model;
 using DevFlowMonitor.Wpf.Service;
@@ -14,13 +15,19 @@ public class SettingsViewModel : INotifyPropertyChanged
 {
     private readonly ILogger<SettingsViewModel> _logger;
     private readonly IAppSettingsService _appSettingsService;
-    public SettingsViewModel(IAppSettingsService appSettingsService, ILogger<SettingsViewModel> logger)
+    private readonly IDevFlowApiClient _apiClient;
+
+    public SettingsViewModel(
+        IAppSettingsService appSettingsService,
+        ILogger<SettingsViewModel> logger,
+        IDevFlowApiClient apiClient)
     {
-        CheckConnectionCommand = new RelayCommand(CheckConnection);
+        CheckConnectionCommand = new AsyncRelayCommand(CheckConnection);
         SaveCommand = new RelayCommand(Save);
 
         _appSettingsService = appSettingsService;
         _logger = logger;
+        _apiClient = apiClient;
 
         SetAppSettings();
     }
@@ -46,6 +53,7 @@ public class SettingsViewModel : INotifyPropertyChanged
 
             _apiUrl = value;
             OnPropertyChanged();
+            InvalidateConnectionStatus();
         }
     }
 
@@ -60,6 +68,7 @@ public class SettingsViewModel : INotifyPropertyChanged
                 return;
             _username = value;
             OnPropertyChanged();
+            InvalidateConnectionStatus();
         }
     }
 
@@ -72,22 +81,30 @@ public class SettingsViewModel : INotifyPropertyChanged
         {
             if (_password == value)
                 return;
-            
+
             _password = value;
             OnPropertyChanged();
+            InvalidateConnectionStatus();
         }
     }
 
-    private bool? _isConnected;
-    public bool? IsConnected
+    private void InvalidateConnectionStatus()
     {
-        get => _isConnected;
+        ConnectionStatus = ConnectionStatus.NotTested;
+        ApiStatus = null;
+        StatusMessage = string.Empty;
+    }
+
+    private ConnectionStatus _connectionStatus;
+    public ConnectionStatus ConnectionStatus
+    {
+        get => _connectionStatus;
         set
         {
-            if (_isConnected == value)
+            if (_connectionStatus == value)
                 return;
             
-            _isConnected = value;
+            _connectionStatus = value;
             OnPropertyChanged();
         }
     }
@@ -105,13 +122,34 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private ApiHealthStatus? _apiStatus;
+    public ApiHealthStatus? ApiStatus
+    {
+        get => _apiStatus;
+        set
+        {
+            if (_apiStatus == value)
+                return;
+
+            _apiStatus = value;
+            OnPropertyChanged();
+        }
+    }
+
     public ICommand CheckConnectionCommand { get; }
     public ICommand SaveCommand { get; }
 
-    private void CheckConnection()
+    public async Task CheckConnection()
     {
-        IsConnected = true;
-        StatusMessage = "— API отвечает (200 OK)";
+        ConnectionStatus = ConnectionStatus.Testing;
+        ApiStatus = null;
+        StatusMessage = "Проверка соединения...";
+
+        var result = await _apiClient.CheckConnectionAsync(ApiUrl);
+
+        ConnectionStatus = result.ConnectionStatus;
+        ApiStatus = result.ApiStatus;
+        StatusMessage = result.Message;
     }
 
     private void Save()
@@ -124,13 +162,16 @@ public class SettingsViewModel : INotifyPropertyChanged
                 Username = Username,
                 Password = Password,
             });
-            
-            StatusMessage = $"Настройки успешно сохранены!";
+
+            StatusMessage = ConnectionStatus == ConnectionStatus.Connected
+                ? "Настройки успешно сохранены!"
+                : "Настройки сохранены, но соединение не проверено";
         }
         catch (Exception ex) when (ex is IOException
                                        or UnauthorizedAccessException
                                        or CryptographicException)
         {
+            ConnectionStatus = ConnectionStatus.Failed;
             StatusMessage = $"Не удалось сохранить: {ex.Message}";
             _logger.LogError(ex, "Failed to save settings");
         }

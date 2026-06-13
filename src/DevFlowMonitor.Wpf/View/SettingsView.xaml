@@ -70,19 +70,69 @@
                 BorderBrush="{StaticResource CardBorderBrush}"
                 BorderThickness="1.5"
                 Padding="16"
-                HorizontalAlignment="Left"
-                Visibility="{Binding IsConnected, Converter={StaticResource BoolToVisibility}}">
+                HorizontalAlignment="Left">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+
             <StackPanel Orientation="Horizontal">
-                <Ellipse Width="8" Height="8"
-                         Fill="#3D8B5E"
-                         VerticalAlignment="Center"
-                         Margin="0 0 8 0"/>
-                <TextBlock Foreground="#3D8B5E"
-                           FontSize="13">Подключено</TextBlock>
-                <TextBlock Foreground="{StaticResource MutedForeground}"
+                <Ellipse Width="14" Height="14"
+                         VerticalAlignment="Center">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse">
+                            <Setter Property="Fill" Value="{StaticResource MutedForeground}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Testing">
+                                    <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
+                                    <Setter Property="Fill" Value="{StaticResource SuccessAccentBlockBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
+                                    <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
+                                    <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
+                                    <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <TextBlock VerticalAlignment="Center"
                            FontSize="13"
-                           Margin="8 0 0 0"
-                           Text="{Binding StatusMessage, UpdateSourceTrigger=PropertyChanged}"/>
+                           Margin="8,0,0,0"
+                           Text="{Binding StatusMessage}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource MutedForeground}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
+                                    <Setter Property="Foreground" Value="{StaticResource SuccessAccentTextBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
+                                    <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
+                                    <Setter Property="Foreground" Value="{StaticResource TotalAccentTextBrush}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
+                                    <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </Border>
     </Grid>

@@ -31,6 +31,11 @@ public class Bootstrapper
 #endif
         });
         
+        services.AddHttpClient<IDevFlowApiClient, DevFlowApiClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IAppSettingsService, AppSettingsService>();
         

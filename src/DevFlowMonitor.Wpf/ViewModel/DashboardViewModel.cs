@@ -1,47 +1,107 @@
-using DevFlowMonitor.Wpf.Model;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using DevFlowMonitor.Wpf.Command;
+using DevFlowMonitor.Wpf.Model;
+using DevFlowMonitor.Wpf.Service;
+
 namespace DevFlowMonitor.Wpf.ViewModel;
 
-public class DashboardViewModel : INotifyPropertyChanged
+public class DashboardViewModel : INotifyPropertyChanged, IActivatableViewModel
 {
+    private readonly IDevFlowApiClient _apiClient;
 
-    public ObservableCollection<PipelineViewModel> PipelineRuns { get; } =
-    [
-        new()
+    public DashboardViewModel(IDevFlowApiClient apiClient)
+    {
+        _apiClient = apiClient;
+        RefreshCommand = new AsyncRelayCommand(() => LoadAsync());
+
+        StatusCards.Add(TotalRunsCard);
+        StatusCards.Add(SuccessfulRunsCard);
+        StatusCards.Add(FailedRunsCard);
+    }
+
+    public ObservableCollection<PipelineViewModel> PipelineRuns { get; } = [];
+    public ObservableCollection<StatusCardViewModel> StatusCards { get; } = [];
+    public ICommand RefreshCommand { get; }
+
+    public Task ActivateAsync(CancellationToken ct = default) =>
+        LoadAsync(ct);
+
+    private StatusCardViewModel TotalRunsCard { get; } =
+        new() { Title = "–í–°–ï–ì–û –ó–ê–ü–£–°–ö–û–í", Type = StatusCardType.Total };
+
+    private StatusCardViewModel SuccessfulRunsCard { get; } =
+        new() { Title = "–£–°–ü–ï–®–ù–´–•", Type = StatusCardType.Success };
+
+    private StatusCardViewModel FailedRunsCard { get; } =
+        new() { Title = "–£–ü–ê–í–®–ò–•", Type = StatusCardType.Failed };
+
+    private bool _isLoading;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
         {
-            Status = PipelineStatus.Success, PipelineName = "backend-ci", Branch = "main", TimeAgo = "5 ÏËÌ Ì‡Á‡‰"
-        },
+            if (_isLoading == value)
+                return;
 
-        new()
+            _isLoading = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private string _statusMessage = string.Empty;
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set
         {
-            Status = PipelineStatus.Failed, PipelineName = "frontend-deploy", Branch = "feature/auth",
-            TimeAgo = "12 ÏËÌ Ì‡Á‡‰"
-        },
+            if (_statusMessage == value)
+                return;
 
-        new()
+            _statusMessage = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public async Task LoadAsync(CancellationToken ct = default)
+    {
+        IsLoading = true;
+        StatusMessage = "–ó–∞–≥—Ä—É–∑–∫–∞ dashboard...";
+
+        try
         {
-            Status = PipelineStatus.Running, PipelineName = "data-pipeline", Branch = "develop",
-            TimeAgo = "28 ÏËÌ Ì‡Á‡‰"
-        },
+            var result = await _apiClient.GetDashboardAsync(ct);
 
-        new() { Status = PipelineStatus.Success, PipelineName = "auth-service", Branch = "main", TimeAgo = "1 ˜ Ì‡Á‡‰" }
-    ];
+            if (!result.IsSuccess)
+            {
+                StatusMessage = result.ErrorMessage!;
+                return;
+            }
 
-    public ObservableCollection<StatusCardViewModel> StatusCards { get; } =
-    [
-        new() { Title = "¬—≈√Œ «¿œ”— Œ¬", Type = StatusCardType.Total, Value = 26 },
-        new() { Title = "”—œ≈ÿÕ€’", Type = StatusCardType.Success, Value = 24 },
-        new() { Title = "”œ¿¬ÿ»’", Type = StatusCardType.Failed, Value = 2 }
-    ];
+            var summary = result.Summary!;
 
-    #region OnPropertyChanged
+            TotalRunsCard.Value = summary.TotalRuns;
+            SuccessfulRunsCard.Value = summary.SuccessfulRuns;
+            FailedRunsCard.Value = summary.FailedRuns;
+
+            PipelineRuns.Clear();
+
+            foreach (var pipeline in summary.RecentPipelines)
+                PipelineRuns.Add(PipelineViewModelMapper.Map(pipeline));
+
+            StatusMessage = string.Empty;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-    #endregion
 }

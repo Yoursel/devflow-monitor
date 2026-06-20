@@ -15,7 +15,7 @@ public class AppSettingsService : IAppSettingsService
     private const string AppFolderName = "DevFlowMonitor";
     private const string SettingsFileName = "settings.json";
 
-    private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("DevFlowMonitor.v1");
+    private static readonly byte[] Entropy = "DevFlowMonitor.v1"u8.ToArray();
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

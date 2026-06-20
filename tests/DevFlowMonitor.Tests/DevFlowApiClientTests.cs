@@ -69,6 +69,88 @@ public class DevFlowApiClientTests
         Assert.Equal("Не удалось подключиться к API", result.Message);
     }
 
+    [Fact]
+    public async Task GetPipelinesAsync_RequestsPageFromConfiguredApi()
+    {
+        var page = new PagedResponse<PipelineSummaryResponse>(
+            [
+                new PipelineSummaryResponse(
+                    Guid.NewGuid(),
+                    "backend-ci",
+                    "main",
+                    PipelineStatus.Success,
+                    DateTimeOffset.UtcNow,
+                    12,
+                    1)
+            ],
+            Page: 2,
+            PageSize: 5,
+            TotalItems: 12);
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(page)
+            });
+        var client = CreateClient(handler);
+
+        var result = await client.GetPipelinesAsync(2, 5);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Items);
+        Assert.Equal(12, result.TotalItems);
+        Assert.Equal(
+            new Uri("http://localhost:5268/api/pipelines?page=2&pageSize=5"),
+            handler.LastRequestUri);
+    }
+
+    [Fact]
+    public async Task GetPipelinesAsync_ReturnsErrorForBadRequest()
+    {
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.BadRequest));
+        var client = CreateClient(handler);
+
+        var result = await client.GetPipelinesAsync(0, 5);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("API вернул HTTP 400", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_RequestsDashboardFromConfiguredApi()
+    {
+        var summary = new DashboardSummaryResponse(
+            TotalRuns: 30,
+            SuccessfulRuns: 24,
+            FailedRuns: 6,
+            RecentPipelines:
+            [
+                new PipelineSummaryResponse(
+                    Guid.NewGuid(),
+                    "backend-ci",
+                    "main",
+                    PipelineStatus.Success,
+                    DateTimeOffset.UtcNow,
+                    12,
+                    1)
+            ]);
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(summary)
+            });
+        var client = CreateClient(handler);
+
+        var result = await client.GetDashboardAsync();
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Summary);
+        Assert.Equal(30, result.Summary.TotalRuns);
+        Assert.Equal(
+            new Uri("http://localhost:5268/api/dashboard"),
+            handler.LastRequestUri);
+    }
+
     private static DevFlowApiClient CreateClient(HttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler)
@@ -78,6 +160,7 @@ public class DevFlowApiClientTests
 
         return new DevFlowApiClient(
             httpClient,
+            new StubSettingsService(),
             NullLogger<DevFlowApiClient>.Instance);
     }
 
@@ -92,6 +175,18 @@ public class DevFlowApiClientTests
         {
             LastRequestUri = request.RequestUri;
             return Task.FromResult(responseFactory(request));
+        }
+    }
+
+    private sealed class StubSettingsService : IAppSettingsService
+    {
+        public AppSettings Load() => new()
+        {
+            ApiUrl = "http://localhost:5268"
+        };
+
+        public void Save(AppSettings settings)
+        {
         }
     }
 }

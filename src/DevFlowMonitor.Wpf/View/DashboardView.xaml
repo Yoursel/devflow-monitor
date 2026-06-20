@@ -16,6 +16,21 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Dashboard</TextBlock>
+
+        <Button Grid.Row="0"
+                Width="140"
+                HorizontalAlignment="Right"
+                Style="{StaticResource MainButton}"
+                Margin="0 0 10 10"
+                Command="{Binding RefreshCommand}">
+            <Button.Content>
+                <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image Source="{StaticResource RefreshIcon}"/>
+                    <TextBlock>Обновить</TextBlock>
+                </WrapPanel>
+            </Button.Content>
+        </Button>
+
         <TextBlock Grid.Row="1" Style="{StaticResource SectionTitle}">Статистика за сегодня</TextBlock>
 
         <ItemsControl Grid.Row="2"
@@ -29,7 +44,14 @@
             </ItemsControl.ItemsPanel>
         </ItemsControl>
 
-        <TextBlock Grid.Row="3" Style="{StaticResource SectionTitle}">Последние запуски</TextBlock>
+        <Grid Grid.Row="3">
+            <TextBlock Style="{StaticResource SectionTitle}">Последние запуски</TextBlock>
+            <TextBlock Text="{Binding StatusMessage}"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Center"
+                       Foreground="{StaticResource MutedForeground}"
+                       FontSize="13"/>
+        </Grid>
 
         <ListView Grid.Row="4"
                   ItemsSource="{Binding PipelineRuns}"

@@ -109,6 +109,15 @@ public class SettingsViewModelTests
             LastApiUrl = apiUrl;
             return Task.FromResult(Result);
         }
+
+        public Task<DashboardLoadResult> GetDashboardAsync(CancellationToken ct = default) =>
+            Task.FromResult(DashboardLoadResult.Failed("Not configured"));
+
+        public Task<PipelinesLoadResult> GetPipelinesAsync(
+            int page,
+            int pageSize,
+            CancellationToken ct = default) =>
+            Task.FromResult(PipelinesLoadResult.Failed("Not configured"));
     }
 
     private sealed class StubSettingsService : IAppSettingsService

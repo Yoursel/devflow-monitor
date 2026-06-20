@@ -1,3 +1,4 @@
+using DevFlowMonitor.Api;
 using DevFlowMonitor.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,9 +21,40 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+var pipelines = PipelineDemoData.Pipelines;
+
 app.MapGet("/api/health", () => new HealthResponse(
     Status: ApiHealthStatus.Healthy,
     Version: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0",
     Timestamp: DateTimeOffset.UtcNow));
+
+app.MapGet("/api/dashboard", () => new DashboardSummaryResponse(
+    TotalRuns: pipelines.Sum(pipeline => pipeline.SuccessfulRuns + pipeline.FailedRuns),
+    SuccessfulRuns: pipelines.Sum(pipeline => pipeline.SuccessfulRuns),
+    FailedRuns: pipelines.Sum(pipeline => pipeline.FailedRuns),
+    RecentPipelines: pipelines
+        .OrderByDescending(pipeline => pipeline.StartedAt)
+        .Take(4)
+        .ToArray()));
+
+app.MapGet("/api/pipelines", (int page = 1, int pageSize = 5) =>
+{
+    if (page < 1)
+        return Results.BadRequest("Page must be greater than or equal to 1.");
+
+    if (pageSize is < 1 or > 50)
+        return Results.BadRequest("PageSize must be between 1 and 50.");
+
+    var items = pipelines
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToArray();
+
+    return Results.Ok(new PagedResponse<PipelineSummaryResponse>(
+        Items: items,
+        Page: page,
+        PageSize: pageSize,
+        TotalItems: pipelines.Count));
+});
 
 app.Run();

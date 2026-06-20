@@ -1,50 +1,98 @@
 using System.Collections.ObjectModel;
-using DevFlowMonitor.Wpf.Model;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using DevFlowMonitor.Wpf.Command;
+using DevFlowMonitor.Wpf.Service;
 
 namespace DevFlowMonitor.Wpf.ViewModel;
 
-public class PipelinesListViewModel
+public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewModel
 {
     private const int PageSize = 5;
 
-    private readonly List<PipelineViewModel> _allPipelines =
-    [
-        new() { Status = PipelineStatus.Running, Branch = "branch 1", TimeAgo = "2 мин. назад", PipelineName = "test1" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 2", TimeAgo = "2 мин. назад", PipelineName = "test2" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 3", TimeAgo = "5 мин. назад", PipelineName = "test3" },
-        new() { Status = PipelineStatus.Running, Branch = "branch 4", TimeAgo = "5 мин. назад", PipelineName = "test4" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 5", TimeAgo = "10 мин. назад", PipelineName = "test5" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 6", TimeAgo = "15 мин. назад", PipelineName = "test6" },
-        new() { Status = PipelineStatus.Running, Branch = "branch 7", TimeAgo = "20 мин. назад", PipelineName = "test7" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 8", TimeAgo = "30 мин. назад", PipelineName = "test8" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 9", TimeAgo = "45 мин. назад", PipelineName = "test9" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 10", TimeAgo = "1 ч. назад", PipelineName = "test10" },
-        new() { Status = PipelineStatus.Running, Branch = "branch 11", TimeAgo = "1 ч. назад", PipelineName = "test11" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 12", TimeAgo = "2 ч. назад", PipelineName = "test12" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 13", TimeAgo = "2 ч. назад", PipelineName = "test13" },
-        new() { Status = PipelineStatus.Running, Branch = "branch 14", TimeAgo = "3 ч. назад", PipelineName = "test14" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 15", TimeAgo = "3 ч. назад", PipelineName = "test15" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 16", TimeAgo = "4 ч. назад", PipelineName = "test16" },
-        new() { Status = PipelineStatus.Running, Branch = "branch 17", TimeAgo = "4 ч. назад", PipelineName = "test17" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 18", TimeAgo = "5 ч. назад", PipelineName = "test18" },
-        new() { Status = PipelineStatus.Failed, Branch = "branch 19", TimeAgo = "5 ч. назад", PipelineName = "test19" },
-        new() { Status = PipelineStatus.Success, Branch = "branch 20", TimeAgo = "6 ч. назад", PipelineName = "test20" },
-    ];
+    private readonly IDevFlowApiClient _apiClient;
+    private int _currentPage = 1;
+    private int _totalItems;
 
-    public PipelinesListViewModel()
+    public PipelinesListViewModel(IDevFlowApiClient apiClient)
     {
-        Pagination = new PaginationViewModel(PageSize, LoadPage);
-        Pagination.SetTotalItems(_allPipelines.Count);
+        _apiClient = apiClient;
+        Pagination = new PaginationViewModel(PageSize, page => LoadPageAsync(page));
+        RefreshCommand = new AsyncRelayCommand(() => LoadAsync());
     }
 
     public ObservableCollection<PipelineViewModel> Pipelines { get; } = [];
     public PaginationViewModel Pagination { get; }
+    public ICommand RefreshCommand { get; }
 
-    private void LoadPage(int page)
+    public Task ActivateAsync(CancellationToken ct = default) =>
+        LoadAsync(ct);
+
+    private bool _isLoading;
+    public bool IsLoading
     {
-        Pipelines.Clear();
+        get => _isLoading;
+        private set
+        {
+            if (_isLoading == value)
+                return;
 
-        foreach (var item in _allPipelines.Skip((page - 1) * PageSize).Take(PageSize))
-            Pipelines.Add(item);
+            _isLoading = value;
+            OnPropertyChanged();
+        }
     }
+
+    private string _statusMessage = string.Empty;
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        private set
+        {
+            if (_statusMessage == value)
+                return;
+
+            _statusMessage = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public Task LoadAsync(CancellationToken ct = default) => LoadPageAsync(_currentPage, ct);
+
+    private async Task LoadPageAsync(int page, CancellationToken ct = default)
+    {
+        IsLoading = true;
+        StatusMessage = "Загрузка pipelines...";
+
+        try
+        {
+            var result = await _apiClient.GetPipelinesAsync(page, PageSize, ct);
+
+            if (!result.IsSuccess)
+            {
+                Pagination.SetTotalItems(_totalItems, _currentPage);
+                StatusMessage = result.ErrorMessage!;
+                return;
+            }
+
+            Pipelines.Clear();
+
+            foreach (var pipeline in result.Items)
+                Pipelines.Add(PipelineViewModelMapper.Map(pipeline));
+
+            _currentPage = page;
+            _totalItems = result.TotalItems;
+            Pagination.SetTotalItems(_totalItems, _currentPage);
+            StatusMessage = string.Empty;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

@@ -66,6 +66,8 @@ public class DashboardViewModelTests
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
             string apiUrl,
+            string gitHubProfile,
+            string gitHubToken,
             CancellationToken ct = default) =>
             Task.FromResult(new ConnectionCheckResult(ConnectionStatus.Connected, "Connected"));
 

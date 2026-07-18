@@ -6,6 +6,8 @@ public interface IDevFlowApiClient
 {
     Task<ConnectionCheckResult> CheckConnectionAsync(
         string apiUrl,
+        string gitHubProfile,
+        string gitHubToken,
         CancellationToken ct = default);
 
     Task<DashboardLoadResult> GetDashboardAsync(

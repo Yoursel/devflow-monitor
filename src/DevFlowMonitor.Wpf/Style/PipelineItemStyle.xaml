@@ -95,6 +95,12 @@
                 <Setter TargetName="StatusBlock" Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
             </DataTrigger>
 
+            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                <Setter TargetName="Header" Property="Background" Value="{StaticResource TotalAccentBrush}"/>
+                <Setter TargetName="TitleText" Property="Foreground" Value="{StaticResource TotalAccentTextBrush}"/>
+                <Setter TargetName="StatusBlock" Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
+            </DataTrigger>
+
             <DataTrigger Binding="{Binding Status}" Value="Success">
                 <Setter TargetName="Header" Property="Background" Value="{StaticResource SuccessAccentBrush}"/>
                 <Setter TargetName="TitleText" Property="Foreground" Value="{StaticResource SuccessAccentTextBrush}"/>

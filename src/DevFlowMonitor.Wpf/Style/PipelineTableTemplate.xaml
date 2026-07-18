@@ -26,6 +26,11 @@
                 <Setter TargetName="BadgeText" Property="Foreground" Value="{StaticResource RunningFg}"/>
                 <Setter TargetName="BadgeText" Property="Text"       Value="running"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                <Setter TargetName="Badge"     Property="Background" Value="{StaticResource RunningBg}"/>
+                <Setter TargetName="BadgeText" Property="Foreground" Value="{StaticResource RunningFg}"/>
+                <Setter TargetName="BadgeText" Property="Text"       Value="cancelled"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -77,6 +82,14 @@
                             <MultiDataTrigger.Conditions>
                                 <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True"/>
                                 <Condition Binding="{Binding Status}" Value="Running"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter TargetName="RowBorder" Property="Background" Value="{StaticResource RunningBg}"/>
+                        </MultiDataTrigger>
+
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                <Condition Binding="{Binding Status}" Value="Cancelled"/>
                             </MultiDataTrigger.Conditions>
                             <Setter TargetName="RowBorder" Property="Background" Value="{StaticResource RunningBg}"/>
                         </MultiDataTrigger>

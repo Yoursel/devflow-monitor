@@ -21,6 +21,8 @@ public class SettingsViewModelTests
         };
         var viewModel = CreateViewModel(apiClient);
         viewModel.ApiUrl = "http://localhost:5268";
+        viewModel.GitHubProfile = "Yoursel";
+        viewModel.GitHubToken = "github_pat_test";
 
         await viewModel.CheckConnection();
 
@@ -28,6 +30,8 @@ public class SettingsViewModelTests
         Assert.Equal(ApiHealthStatus.Healthy, viewModel.ApiStatus);
         Assert.Contains("1.2.3", viewModel.StatusMessage);
         Assert.Equal("http://localhost:5268", apiClient.LastApiUrl);
+        Assert.Equal("Yoursel", apiClient.LastGitHubProfile);
+        Assert.Equal("github_pat_test", apiClient.LastGitHubToken);
     }
 
     [Fact]
@@ -61,7 +65,7 @@ public class SettingsViewModelTests
         viewModel.ApiUrl = "http://localhost:5268";
         await viewModel.CheckConnection();
 
-        viewModel.Username = "new-user";
+        viewModel.GitHubToken = "new-token";
 
         Assert.Equal(ConnectionStatus.NotTested, viewModel.ConnectionStatus);
         Assert.Null(viewModel.ApiStatus);
@@ -74,15 +78,15 @@ public class SettingsViewModelTests
         var settingsService = new StubSettingsService();
         var viewModel = CreateViewModel(new StubApiClient(), settingsService);
         viewModel.ApiUrl = "http://localhost:5268";
-        viewModel.Username = "user";
-        viewModel.Password = "secret";
+        viewModel.GitHubProfile = "Yoursel";
+        viewModel.GitHubToken = "secret";
 
         viewModel.SaveCommand.Execute(null);
 
         Assert.NotNull(settingsService.SavedSettings);
         Assert.Equal("http://localhost:5268", settingsService.SavedSettings.ApiUrl);
-        Assert.Equal("user", settingsService.SavedSettings.Username);
-        Assert.Equal("secret", settingsService.SavedSettings.Password);
+        Assert.Equal("Yoursel", settingsService.SavedSettings.GitHubProfile);
+        Assert.Equal("secret", settingsService.SavedSettings.GitHubToken);
     }
 
     private static SettingsViewModel CreateViewModel(
@@ -101,12 +105,18 @@ public class SettingsViewModelTests
             new(ConnectionStatus.Connected, "Соединение установлено");
 
         public string? LastApiUrl { get; private set; }
+        public string? LastGitHubProfile { get; private set; }
+        public string? LastGitHubToken { get; private set; }
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
             string apiUrl,
+            string gitHubProfile,
+            string gitHubToken,
             CancellationToken ct = default)
         {
             LastApiUrl = apiUrl;
+            LastGitHubProfile = gitHubProfile;
+            LastGitHubToken = gitHubToken;
             return Task.FromResult(Result);
         }
 

@@ -12,5 +12,8 @@ public enum PipelineStatus
     Failed,
 
     [JsonStringEnumMemberName("running")]
-    Running
+    Running,
+
+    [JsonStringEnumMemberName("cancelled")]
+    Cancelled
 }

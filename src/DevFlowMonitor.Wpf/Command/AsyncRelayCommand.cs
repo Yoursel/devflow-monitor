@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.Diagnostics;
 
 namespace DevFlowMonitor.Wpf.Command;
 
@@ -8,6 +9,7 @@ public class AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null
     private bool _isExecuting;
 
     public event EventHandler? CanExecuteChanged;
+    public event EventHandler<CommandExecutionFailedEventArgs>? ExecutionFailed;
 
     public bool IsExecuting
     {
@@ -28,6 +30,18 @@ public class AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null
 
     public async void Execute(object? parameter)
     {
+        try
+        {
+            await ExecuteAsync(parameter);
+        }
+        catch (Exception ex)
+        {
+            OnExecutionFailed(ex);
+        }
+    }
+
+    public async Task ExecuteAsync(object? parameter = null)
+    {
         if (!CanExecute(parameter)) return;
 
         try
@@ -39,6 +53,12 @@ public class AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null
         {
             IsExecuting = false;
         }
+    }
+
+    private void OnExecutionFailed(Exception exception)
+    {
+        Trace.TraceError("Async command failed: {0}", exception);
+        ExecutionFailed?.Invoke(this, new CommandExecutionFailedEventArgs(exception));
     }
 
     public void RaiseCanExecuteChanged()
@@ -53,6 +73,7 @@ public class AsyncRelayCommand<T>(Func<T, Task> execute, Func<T, bool>? canExecu
     private bool _isExecuting;
 
     public event EventHandler? CanExecuteChanged;
+    public event EventHandler<CommandExecutionFailedEventArgs>? ExecutionFailed;
 
     private bool IsExecuting
     {
@@ -74,6 +95,18 @@ public class AsyncRelayCommand<T>(Func<T, Task> execute, Func<T, bool>? canExecu
 
     public async void Execute(object? parameter)
     {
+        try
+        {
+            await ExecuteAsync(parameter);
+        }
+        catch (Exception ex)
+        {
+            OnExecutionFailed(ex);
+        }
+    }
+
+    public async Task ExecuteAsync(object? parameter)
+    {
         if (parameter is not T value) return;
         if (!CanExecute(parameter)) return;
 
@@ -88,8 +121,19 @@ public class AsyncRelayCommand<T>(Func<T, Task> execute, Func<T, bool>? canExecu
         }
     }
 
+    private void OnExecutionFailed(Exception exception)
+    {
+        Trace.TraceError("Async command failed: {0}", exception);
+        ExecutionFailed?.Invoke(this, new CommandExecutionFailedEventArgs(exception));
+    }
+
     public void RaiseCanExecuteChanged()
     {
         CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
+}
+
+public sealed class CommandExecutionFailedEventArgs(Exception exception) : EventArgs
+{
+    public Exception Exception { get; } = exception;
 }

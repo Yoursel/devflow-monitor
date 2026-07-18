@@ -64,12 +64,7 @@ public class AppSettingsService : IAppSettingsService
 
             _logger.LogDebug("Settings loaded successfully from {FilePath}", _filePath);
 
-            return new AppSettings
-            {
-                ApiUrl = dto.ApiUrl,
-                Username = dto.Username,
-                Password = Unprotect(dto.ProtectedPassword)
-            };
+            return MapSettings(dto);
         }
         catch (JsonException ex)
         {
@@ -105,8 +100,8 @@ public class AppSettingsService : IAppSettingsService
         var dto = new AppSettingsPersistenceDto
         {
             ApiUrl = settings.ApiUrl,
-            Username = settings.Username,
-            ProtectedPassword = Protect(settings.Password)
+            GitHubProfile = settings.GitHubProfile,
+            ProtectedGitHubToken = Protect(settings.GitHubToken)
         };
 
         var json = JsonSerializer.Serialize(dto, JsonOptions);
@@ -146,5 +141,41 @@ public class AppSettingsService : IAppSettingsService
             DataProtectionScope.CurrentUser);
 
         return Encoding.UTF8.GetString(bytes);
+    }
+
+    private static AppSettings MapSettings(AppSettingsPersistenceDto dto)
+    {
+        var settings = new AppSettings
+        {
+            GitHubToken = Unprotect(dto.ProtectedGitHubToken ?? dto.ProtectedPassword)
+        };
+
+        if (LooksLikeLegacyGitHubValue(dto.ApiUrl))
+        {
+            settings.GitHubProfile = string.IsNullOrWhiteSpace(dto.GitHubProfile)
+                ? dto.ApiUrl
+                : dto.GitHubProfile;
+
+            return settings;
+        }
+
+        settings.ApiUrl = string.IsNullOrWhiteSpace(dto.ApiUrl)
+            ? settings.ApiUrl
+            : dto.ApiUrl;
+        settings.GitHubProfile = dto.GitHubProfile;
+
+        return settings;
+    }
+
+    private static bool LooksLikeLegacyGitHubValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri))
+            return true;
+
+        return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.Equals("www.github.com", StringComparison.OrdinalIgnoreCase);
     }
 }

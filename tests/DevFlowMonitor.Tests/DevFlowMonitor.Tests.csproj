@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DevFlowMonitor.Contracts\DevFlowMonitor.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\DevFlowMonitor.Api\DevFlowMonitor.Api.csproj" />
     <ProjectReference Include="..\..\src\DevFlowMonitor.Wpf\DevFlowMonitor.Wpf.csproj" />
   </ItemGroup>
 

@@ -37,8 +37,8 @@ public class SettingsViewModel : INotifyPropertyChanged
         var settings = _appSettingsService.Load();
 
         ApiUrl = settings.ApiUrl;
-        Username = settings.Username;
-        Password = settings.Password;
+        GitHubProfile = settings.GitHubProfile;
+        GitHubToken = settings.GitHubToken;
     }
 
     private string _apiUrl = string.Empty;
@@ -57,32 +57,33 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    private string _username = string.Empty;
+    private string _gitHubProfile = string.Empty;
 
-    public string Username
+    public string GitHubProfile
     {
-        get => _username;
+        get => _gitHubProfile;
         set
         {
-            if (_username == value)
+            if (_gitHubProfile == value)
                 return;
-            _username = value;
+
+            _gitHubProfile = value;
             OnPropertyChanged();
             InvalidateConnectionStatus();
         }
     }
 
-    private string _password = string.Empty;
+    private string _gitHubToken = string.Empty;
 
-    public string Password
+    public string GitHubToken
     {
-        get => _password;
+        get => _gitHubToken;
         set
         {
-            if (_password == value)
+            if (_gitHubToken == value)
                 return;
 
-            _password = value;
+            _gitHubToken = value;
             OnPropertyChanged();
             InvalidateConnectionStatus();
         }
@@ -145,7 +146,7 @@ public class SettingsViewModel : INotifyPropertyChanged
         ApiStatus = null;
         StatusMessage = "Проверка соединения...";
 
-        var result = await _apiClient.CheckConnectionAsync(ApiUrl);
+        var result = await _apiClient.CheckConnectionAsync(ApiUrl, GitHubProfile, GitHubToken);
 
         ConnectionStatus = result.ConnectionStatus;
         ApiStatus = result.ApiStatus;
@@ -159,8 +160,8 @@ public class SettingsViewModel : INotifyPropertyChanged
             _appSettingsService.Save(new AppSettings()
             {
                 ApiUrl = ApiUrl,
-                Username = Username,
-                Password = Password,
+                GitHubProfile = GitHubProfile,
+                GitHubToken = GitHubToken,
             });
 
             StatusMessage = ConnectionStatus == ConnectionStatus.Connected

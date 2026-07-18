@@ -1,4 +1,5 @@
 using DevFlowMonitor.Api;
+using DevFlowMonitor.Api.GitHub;
 using DevFlowMonitor.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,10 @@ builder.Logging.AddDebug();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient<IGitHubActionsClient, GitHubActionsClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.github.com/");
+});
 
 var app = builder.Build();
 
@@ -22,6 +27,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 var pipelines = PipelineDemoData.Pipelines;
+
+static IResult ToApiResult<T>(GitHubActionsResult<T> result) =>
+    result.IsSuccess
+        ? Results.Ok(result.Value)
+        : Results.Text(result.ErrorMessage, statusCode: StatusCodes.Status400BadRequest);
 
 app.MapGet("/api/health", () => new HealthResponse(
     Status: ApiHealthStatus.Healthy,
@@ -56,5 +66,29 @@ app.MapGet("/api/pipelines", (int page = 1, int pageSize = 5) =>
         PageSize: pageSize,
         TotalItems: pipelines.Count));
 });
+
+app.MapPost(
+    "/api/github/check-connection",
+    async (
+        GitHubConnectionRequest request,
+        IGitHubActionsClient gitHub,
+        CancellationToken ct) =>
+        ToApiResult(await gitHub.CheckConnectionAsync(request, ct)));
+
+app.MapPost(
+    "/api/github/dashboard",
+    async (
+        GitHubConnectionRequest request,
+        IGitHubActionsClient gitHub,
+        CancellationToken ct) =>
+        ToApiResult(await gitHub.GetDashboardAsync(request, ct)));
+
+app.MapPost(
+    "/api/github/pipelines",
+    async (
+        GitHubPipelinesRequest request,
+        IGitHubActionsClient gitHub,
+        CancellationToken ct) =>
+        ToApiResult(await gitHub.GetPipelinesAsync(request, ct)));
 
 app.Run();

@@ -16,7 +16,7 @@ public partial class SettingsView : UserControl
     {
         if (DataContext is SettingsViewModel vm)
         {
-            PasswordField.Password = vm.Password;
+            PasswordField.Password = vm.GitHubToken;
         }
     }
 
@@ -24,7 +24,7 @@ public partial class SettingsView : UserControl
     {
         if (DataContext is SettingsViewModel vm && sender is PasswordBox pb)
         {
-            vm.Password = pb.Password;
+            vm.GitHubToken = pb.Password;
         }
     }
 }

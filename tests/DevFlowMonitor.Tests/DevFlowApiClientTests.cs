@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 using DevFlowMonitor.Contracts;
 using DevFlowMonitor.Wpf.Model;
 using DevFlowMonitor.Wpf.Service;
@@ -10,148 +12,199 @@ namespace DevFlowMonitor.Tests;
 public class DevFlowApiClientTests
 {
     [Fact]
-    public async Task CheckConnectionAsync_ReturnsSuccessForHealthyApi()
+    public async Task CheckConnectionAsync_PostsGitHubSettingsToConfiguredApi()
     {
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(
-                    new HealthResponse(ApiHealthStatus.Healthy, "1.2.3", DateTimeOffset.UtcNow))
-            });
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == "/api/github/check-connection"
+                ? JsonResponse(new GitHubConnectionResponse("Yoursel", 2))
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
         var client = CreateClient(handler);
 
-        var result = await client.CheckConnectionAsync("http://localhost:5268");
+        var result = await client.CheckConnectionAsync(
+            "http://localhost:5268",
+            "Yoursel",
+            "github_pat_test");
+
+        var request = Assert.Single(handler.Requests);
+        var body = await ReadJsonBodyAsync<GitHubConnectionRequest>(request);
 
         Assert.Equal(ConnectionStatus.Connected, result.ConnectionStatus);
-        Assert.Equal(ApiHealthStatus.Healthy, result.ApiStatus);
-        Assert.Equal("1.2.3", result.ApiVersion);
-        Assert.Equal(new Uri("http://localhost:5268/api/health"), handler.LastRequestUri);
+        Assert.Contains("Yoursel", result.Message);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal(new Uri("http://localhost:5268/api/github/check-connection"), request.RequestUri);
+        Assert.Equal("Yoursel", body.ProfileOrOwner);
+        Assert.Equal("github_pat_test", body.Token);
     }
 
     [Fact]
-    public async Task CheckConnectionAsync_ReturnsFailedForUnsupportedScheme()
+    public async Task CheckConnectionAsync_ReturnsFailedForInvalidApiUrl()
     {
-        var client = CreateClient(new StubHttpMessageHandler(_ => new HttpResponseMessage()));
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage());
+        var client = CreateClient(handler);
 
-        var result = await client.CheckConnectionAsync("ftp://localhost");
+        var result = await client.CheckConnectionAsync(
+            "Yoursel",
+            "Yoursel",
+            "github_pat_test");
 
         Assert.Equal(ConnectionStatus.Failed, result.ConnectionStatus);
         Assert.Equal("URL API имеет некорректный формат", result.Message);
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
-    public async Task CheckConnectionAsync_ReturnsConnectedForDegradedApi()
+    public async Task CheckConnectionAsync_RejectsHttpForRemoteApi()
     {
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(
-                    new HealthResponse(ApiHealthStatus.Degraded, "1.2.3", DateTimeOffset.UtcNow))
-            });
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage());
         var client = CreateClient(handler);
 
-        var result = await client.CheckConnectionAsync("http://localhost:5268");
-
-        Assert.Equal(ConnectionStatus.Connected, result.ConnectionStatus);
-        Assert.Equal(ApiHealthStatus.Degraded, result.ApiStatus);
-        Assert.Contains("ограничениями", result.Message);
-    }
-
-    [Fact]
-    public async Task CheckConnectionAsync_ReturnsFailedForNetworkError()
-    {
-        var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException());
-        var client = CreateClient(handler);
-
-        var result = await client.CheckConnectionAsync("http://localhost:5268");
+        var result = await client.CheckConnectionAsync(
+            "http://devflow.example.com",
+            "Yoursel",
+            "github_pat_test");
 
         Assert.Equal(ConnectionStatus.Failed, result.ConnectionStatus);
-        Assert.Equal("Не удалось подключиться к API", result.Message);
+        Assert.Equal("Для удалённого API необходимо использовать HTTPS", result.Message);
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
-    public async Task GetPipelinesAsync_RequestsPageFromConfiguredApi()
+    public async Task CheckConnectionAsync_ReturnsApiErrorMessage()
     {
-        var page = new PagedResponse<PipelineSummaryResponse>(
+        var handler = new StubHttpMessageHandler(_ =>
+            TextResponse(HttpStatusCode.BadRequest, "Укажите GitHub token"));
+        var client = CreateClient(handler);
+
+        var result = await client.CheckConnectionAsync(
+            "http://localhost:5268",
+            "Yoursel",
+            "");
+
+        Assert.Equal(ConnectionStatus.Failed, result.ConnectionStatus);
+        Assert.Equal("Укажите GitHub token", result.Message);
+    }
+
+    [Fact]
+    public async Task GetPipelinesAsync_PostsRequestToConfiguredApi()
+    {
+        var pipelines = new PagedResponse<PipelineSummaryResponse>(
             [
                 new PipelineSummaryResponse(
                     Guid.NewGuid(),
-                    "backend-ci",
-                    "main",
-                    PipelineStatus.Success,
-                    DateTimeOffset.UtcNow,
-                    12,
-                    1)
+                    "Yoursel/DevFlowMonitor / CI",
+                    "develop",
+                    PipelineStatus.Running,
+                    DateTimeOffset.Parse("2026-06-28T11:15:30Z"),
+                    0,
+                    0)
             ],
             Page: 2,
             PageSize: 5,
             TotalItems: 12);
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(page)
-            });
-        var client = CreateClient(handler);
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == "/api/github/pipelines"
+                ? JsonResponse(pipelines)
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = CreateClient(handler, Settings());
 
         var result = await client.GetPipelinesAsync(2, 5);
+
+        var request = Assert.Single(handler.Requests);
+        var body = await ReadJsonBodyAsync<GitHubPipelinesRequest>(request);
 
         Assert.True(result.IsSuccess);
         Assert.Single(result.Items);
         Assert.Equal(12, result.TotalItems);
-        Assert.Equal(
-            new Uri("http://localhost:5268/api/pipelines?page=2&pageSize=5"),
-            handler.LastRequestUri);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal(new Uri("http://localhost:5268/api/github/pipelines"), request.RequestUri);
+        Assert.Equal("Yoursel", body.ProfileOrOwner);
+        Assert.Equal("github_pat_test", body.Token);
+        Assert.Equal(2, body.Page);
+        Assert.Equal(5, body.PageSize);
     }
 
     [Fact]
-    public async Task GetPipelinesAsync_ReturnsErrorForBadRequest()
+    public async Task GetPipelinesAsync_ReturnsApiError()
     {
         var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.BadRequest));
-        var client = CreateClient(handler);
+            TextResponse(HttpStatusCode.BadRequest, "GitHub отклонил токен доступа"));
+        var client = CreateClient(handler, Settings());
 
-        var result = await client.GetPipelinesAsync(0, 5);
+        var result = await client.GetPipelinesAsync(1, 5);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal("API вернул HTTP 400", result.ErrorMessage);
+        Assert.Equal("GitHub отклонил токен доступа", result.ErrorMessage);
     }
 
     [Fact]
-    public async Task GetDashboardAsync_RequestsDashboardFromConfiguredApi()
+    public async Task GetDashboardAsync_PostsRequestToConfiguredApi()
     {
         var summary = new DashboardSummaryResponse(
-            TotalRuns: 30,
-            SuccessfulRuns: 24,
-            FailedRuns: 6,
+            TotalRuns: 3,
+            SuccessfulRuns: 1,
+            FailedRuns: 1,
             RecentPipelines:
             [
                 new PipelineSummaryResponse(
                     Guid.NewGuid(),
-                    "backend-ci",
-                    "main",
-                    PipelineStatus.Success,
-                    DateTimeOffset.UtcNow,
-                    12,
-                    1)
+                    "Yoursel/DevFlowMonitor / CI",
+                    "feature/actions",
+                    PipelineStatus.Running,
+                    DateTimeOffset.Parse("2026-06-28T11:00:00Z"),
+                    0,
+                    0)
             ]);
-        var handler = new StubHttpMessageHandler(_ =>
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = JsonContent.Create(summary)
-            });
-        var client = CreateClient(handler);
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == "/api/github/dashboard"
+                ? JsonResponse(summary)
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var client = CreateClient(handler, Settings());
 
         var result = await client.GetDashboardAsync();
 
+        var request = Assert.Single(handler.Requests);
+        var body = await ReadJsonBodyAsync<GitHubConnectionRequest>(request);
+
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Summary);
-        Assert.Equal(30, result.Summary.TotalRuns);
-        Assert.Equal(
-            new Uri("http://localhost:5268/api/dashboard"),
-            handler.LastRequestUri);
+        Assert.Equal(3, result.Summary.TotalRuns);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal(new Uri("http://localhost:5268/api/github/dashboard"), request.RequestUri);
+        Assert.Equal("Yoursel", body.ProfileOrOwner);
+        Assert.Equal("github_pat_test", body.Token);
     }
 
-    private static DevFlowApiClient CreateClient(HttpMessageHandler handler)
+    private static AppSettings Settings() => new()
+    {
+        ApiUrl = "http://localhost:5268",
+        GitHubProfile = "Yoursel",
+        GitHubToken = "github_pat_test"
+    };
+
+    private static async Task<T> ReadJsonBodyAsync<T>(HttpRequestMessage request)
+    {
+        Assert.NotNull(request.Content);
+        var json = await request.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<T>(
+            json,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+    }
+
+    private static HttpResponseMessage JsonResponse<T>(T value) =>
+        new(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(value)
+        };
+
+    private static HttpResponseMessage TextResponse(HttpStatusCode statusCode, string text) =>
+        new(statusCode)
+        {
+            Content = new StringContent(text, Encoding.UTF8, "text/plain")
+        };
+
+    private static DevFlowApiClient CreateClient(
+        HttpMessageHandler handler,
+        AppSettings? settings = null)
     {
         var httpClient = new HttpClient(handler)
         {
@@ -160,30 +213,27 @@ public class DevFlowApiClientTests
 
         return new DevFlowApiClient(
             httpClient,
-            new StubSettingsService(),
+            new StubSettingsService(settings),
             NullLogger<DevFlowApiClient>.Instance);
     }
 
     private sealed class StubHttpMessageHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler
     {
-        public Uri? LastRequestUri { get; private set; }
+        public List<HttpRequestMessage> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            LastRequestUri = request.RequestUri;
+            Requests.Add(request);
             return Task.FromResult(responseFactory(request));
         }
     }
 
-    private sealed class StubSettingsService : IAppSettingsService
+    private sealed class StubSettingsService(AppSettings? settings = null) : IAppSettingsService
     {
-        public AppSettings Load() => new()
-        {
-            ApiUrl = "http://localhost:5268"
-        };
+        public AppSettings Load() => settings ?? new AppSettings();
 
         public void Save(AppSettings settings)
         {

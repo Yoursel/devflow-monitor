@@ -2,7 +2,7 @@ namespace DevFlowMonitor.Wpf.Model;
 
 public class AppSettings
 {
-    public string ApiUrl { get; set; } = string.Empty;
-    public string Username { get; set; } =  string.Empty;
-    public string Password { get; set; } =  string.Empty;
+    public string ApiUrl { get; set; } = "http://localhost:5268";
+    public string GitHubProfile { get; set; } = string.Empty;
+    public string GitHubToken { get; set; } = string.Empty;
 }

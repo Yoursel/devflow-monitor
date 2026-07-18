@@ -15,82 +15,27 @@ public class DevFlowApiClient(
 {
     public async Task<ConnectionCheckResult> CheckConnectionAsync(
         string apiUrl,
+        string gitHubProfile,
+        string gitHubToken,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(apiUrl))
-            return Failed("URL API не задан");
+        if (!TryCreateBaseUri(apiUrl, out var baseUri, out var validationError))
+            return Failed(validationError);
 
-        if (!Uri.TryCreate(apiUrl.Trim(), UriKind.Absolute, out var baseUri)
-            || baseUri.Scheme is not ("http" or "https"))
-            return Failed("URL API имеет некорректный формат");
+        var result = await PostApiJsonAsync<GitHubConnectionResponse>(
+            baseUri,
+            "/api/github/check-connection",
+            new GitHubConnectionRequest(gitHubProfile, gitHubToken),
+            "GitHub connection check",
+            "Не удалось проверить подключение к GitHub через API",
+            ct);
 
-        try
-        {
-            using var response = await httpClient
-                .GetAsync(new Uri(baseUri, "/api/health"), ct)
-                .ConfigureAwait(false);
+        if (!result.IsSuccess)
+            return Failed(result.ErrorMessage!);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning(
-                    "API connection check returned HTTP {StatusCode} from {ApiUrl}",
-                    (int)response.StatusCode,
-                    apiUrl);
-
-                return Failed($"API вернул HTTP {(int)response.StatusCode}");
-            }
-
-            var health = await response.Content
-                .ReadFromJsonAsync<HealthResponse>(cancellationToken: ct)
-                .ConfigureAwait(false);
-
-            if (health is null)
-                return Failed("API вернул пустой ответ");
-
-            logger.LogInformation(
-                "API connection check completed for {ApiUrl}: {ApiStatus}, version {ApiVersion}",
-                apiUrl,
-                health.Status,
-                health.Version);
-
-            return health.Status switch
-            {
-                ApiHealthStatus.Healthy => Connected(
-                    $"Соединение установлено. API v{health.Version}",
-                    health),
-                ApiHealthStatus.Degraded => Connected(
-                    "Соединение установлено, но API работает с ограничениями",
-                    health),
-                ApiHealthStatus.Unhealthy => Connected(
-                    "Соединение установлено, но API не готово к работе",
-                    health),
-                _ => Failed("API вернул неизвестный статус", health)
-            };
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "HTTP error during connection check to {ApiUrl}", apiUrl);
-            return Failed("Не удалось подключиться к API");
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            logger.LogWarning("API connection check timed out for {ApiUrl}", apiUrl);
-            return Failed("Превышено время ожидания (10 сек)");
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Invalid health response received from {ApiUrl}", apiUrl);
-            return Failed("API вернул ответ в некорректном формате");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error during connection check to {ApiUrl}", apiUrl);
-            return Failed("Не удалось проверить подключение к API");
-        }
+        return new ConnectionCheckResult(
+            ConnectionStatus.Connected,
+            $"Соединение установлено. GitHub: {result.Value!.Owner}, репозиториев: {result.Value.RepositoryCount}");
     }
 
     public async Task<PipelinesLoadResult> GetPipelinesAsync(
@@ -103,9 +48,10 @@ public class DevFlowApiClient(
         if (!TryCreateBaseUri(settings.ApiUrl, out var baseUri, out var validationError))
             return PipelinesLoadResult.Failed(validationError);
 
-        var result = await GetJsonAsync<PagedResponse<PipelineSummaryResponse>>(
+        var result = await PostApiJsonAsync<PagedResponse<PipelineSummaryResponse>>(
             baseUri,
-            $"/api/pipelines?page={page}&pageSize={pageSize}",
+            "/api/github/pipelines",
+            new GitHubPipelinesRequest(settings.GitHubProfile, settings.GitHubToken, page, pageSize),
             "Pipelines",
             "Не удалось загрузить pipelines",
             ct);
@@ -122,9 +68,10 @@ public class DevFlowApiClient(
         if (!TryCreateBaseUri(settings.ApiUrl, out var baseUri, out var validationError))
             return DashboardLoadResult.Failed(validationError);
 
-        var result = await GetJsonAsync<DashboardSummaryResponse>(
+        var result = await PostApiJsonAsync<DashboardSummaryResponse>(
             baseUri,
-            "/api/dashboard",
+            "/api/github/dashboard",
+            new GitHubConnectionRequest(settings.GitHubProfile, settings.GitHubToken),
             "Dashboard",
             "Не удалось загрузить dashboard",
             ct);
@@ -134,9 +81,10 @@ public class DevFlowApiClient(
             : DashboardLoadResult.Failed(result.ErrorMessage!);
     }
 
-    private async Task<ApiLoadResult<T>> GetJsonAsync<T>(
+    private async Task<ApiLoadResult<T>> PostApiJsonAsync<T>(
         Uri baseUri,
         string relativeUrl,
+        object requestBody,
         string operationName,
         string failedMessage,
         CancellationToken ct)
@@ -144,7 +92,7 @@ public class DevFlowApiClient(
         try
         {
             using var response = await httpClient
-                .GetAsync(new Uri(baseUri, relativeUrl), ct)
+                .PostAsJsonAsync(new Uri(baseUri, relativeUrl), requestBody, ct)
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -154,8 +102,14 @@ public class DevFlowApiClient(
                     operationName,
                     (int)response.StatusCode);
 
+                var errorMessage = await response.Content
+                    .ReadAsStringAsync(ct)
+                    .ConfigureAwait(false);
+
                 return ApiLoadResult<T>.Failed(
-                    $"API вернул HTTP {(int)response.StatusCode}");
+                    string.IsNullOrWhiteSpace(errorMessage)
+                        ? $"API вернул HTTP {(int)response.StatusCode}"
+                        : errorMessage);
             }
 
             var result = await response.Content
@@ -192,17 +146,6 @@ public class DevFlowApiClient(
         }
     }
 
-    private sealed record ApiLoadResult<T>(T? Value, string? ErrorMessage)
-    {
-        public bool IsSuccess => ErrorMessage is null;
-
-        public static ApiLoadResult<T> Success(T value) =>
-            new(value, null);
-
-        public static ApiLoadResult<T> Failed(string message) =>
-            new(default, message);
-    }
-
     private static bool TryCreateBaseUri(
         string apiUrl,
         out Uri baseUri,
@@ -222,21 +165,27 @@ public class DevFlowApiClient(
             return false;
         }
 
+        if (baseUri.Scheme == Uri.UriSchemeHttp && !baseUri.IsLoopback)
+        {
+            validationError = "Для удалённого API необходимо использовать HTTPS";
+            return false;
+        }
+
         validationError = string.Empty;
         return true;
     }
 
-    private static ConnectionCheckResult Failed(string message, HealthResponse? health = null) =>
-        new(
-            ConnectionStatus.Failed,
-            message,
-            health?.Status,
-            health?.Version);
+    private static ConnectionCheckResult Failed(string message) =>
+        new(ConnectionStatus.Failed, message);
 
-    private static ConnectionCheckResult Connected(string message, HealthResponse health) =>
-        new(
-            ConnectionStatus.Connected,
-            message,
-            health.Status,
-            health.Version);
+    private sealed record ApiLoadResult<T>(T? Value, string? ErrorMessage)
+    {
+        public bool IsSuccess => ErrorMessage is null;
+
+        public static ApiLoadResult<T> Success(T value) =>
+            new(value, null);
+
+        public static ApiLoadResult<T> Failed(string message) =>
+            new(default, message);
+    }
 }

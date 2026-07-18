@@ -11,6 +11,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -25,21 +26,38 @@
             <StackPanel>
                 <Border Style="{StaticResource FormSectionHeader}">
                     <TextBlock Foreground="{StaticResource TableHeaderForeground}"
-                               FontSize="10">КОНФИГУРАЦИЯ</TextBlock>
+                               FontSize="10">API</TextBlock>
                 </Border>
 
                 <StackPanel Margin="24">
                     <TextBlock Style="{StaticResource FormFieldLabel}">URL API</TextBlock>
-                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                    <Border Style="{StaticResource FormInputBorder}">
                         <TextBox Style="{StaticResource FormInput}"
                                  Text="{Binding ApiUrl, UpdateSourceTrigger=PropertyChanged}"/>
                     </Border>
-                    <TextBlock Style="{StaticResource FormFieldLabel}">Имя пользователя</TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                CornerRadius="8"
+                Background="{StaticResource CardBackground}"
+                BorderBrush="{StaticResource CardBorderBrush}"
+                BorderThickness="1.5"
+                Style="{StaticResource SectionContent}">
+            <StackPanel>
+                <Border Style="{StaticResource FormSectionHeader}">
+                    <TextBlock Foreground="{StaticResource TableHeaderForeground}"
+                               FontSize="10">GITHUB ACTIONS</TextBlock>
+                </Border>
+
+                <StackPanel Margin="24">
+                    <TextBlock Style="{StaticResource FormFieldLabel}">GitHub профиль или организация</TextBlock>
                     <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
                         <TextBox Style="{StaticResource FormInput}"
-                                 Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+                                 Text="{Binding GitHubProfile, UpdateSourceTrigger=PropertyChanged}"/>
                     </Border>
-                    <TextBlock Style="{StaticResource FormFieldLabel}">Пароль</TextBlock>
+                    <TextBlock Style="{StaticResource FormFieldLabel}">GitHub token</TextBlock>
                     <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
                         <PasswordBox Style="{StaticResource FormPasswordBox}"
                                      PasswordChanged="PasswordField_PasswordChanged"
@@ -64,7 +82,8 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-        <Border Grid.Row="2"
+
+        <Border Grid.Row="3"
                 CornerRadius="8"
                 Background="#F8F3E8"
                 BorderBrush="{StaticResource CardBorderBrush}"

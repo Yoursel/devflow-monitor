@@ -6,7 +6,7 @@ using DevFlowMonitor.Wpf.Service;
 
 namespace DevFlowMonitor.Wpf.ViewModel;
 
-public class MainViewModel : INotifyPropertyChanged, IDisposable
+public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 {
     private bool _disposed;
 
@@ -29,16 +29,14 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public object? CurrentViewModel => _navigationService.CurrentViewModel;
 
-    public bool IsDashboardActive  => _navigationService.CurrentViewModel is DashboardViewModel;
-    public bool IsPipelinesActive  => _navigationService.CurrentViewModel is PipelinesListViewModel;
-    public bool IsSettingsActive   => _navigationService.CurrentViewModel is SettingsViewModel;
-
-
-    #region OnPropertyChanged
+    public bool IsDashboardActive => _navigationService.CurrentViewModel is DashboardViewModel;
+    public bool IsPipelinesActive => _navigationService.CurrentViewModel is PipelinesListViewModel;
+    public bool IsSettingsActive => _navigationService.CurrentViewModel is SettingsViewModel;
 
     private void OnNavigationPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(INavigationService.CurrentViewModel)) return;
+        if (e.PropertyName != nameof(INavigationService.CurrentViewModel))
+            return;
 
         OnPropertyChanged(nameof(CurrentViewModel));
         OnPropertyChanged(nameof(IsDashboardActive));
@@ -51,24 +49,12 @@ public class MainViewModel : INotifyPropertyChanged, IDisposable
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    #endregion
-
-    #region Dispose
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (_disposed) return;
-
-        if (disposing)
-            _navigationService.PropertyChanged -= OnNavigationPropertyChanged;
-        _disposed = true;
-    }
-
     public void Dispose()
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
+        if (_disposed)
+            return;
 
-    #endregion
+        _navigationService.PropertyChanged -= OnNavigationPropertyChanged;
+        _disposed = true;
+    }
 }

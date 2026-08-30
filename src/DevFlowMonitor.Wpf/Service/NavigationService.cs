@@ -32,7 +32,7 @@ public class NavigationService(
     private CancellationTokenSource ResetActivation()
     {
         _activationCts?.Cancel();
-        _activationCts = new CancellationTokenSource();
+        _activationCts = new();
 
         return _activationCts;
     }

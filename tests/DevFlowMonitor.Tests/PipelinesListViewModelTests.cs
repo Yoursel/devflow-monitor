@@ -21,7 +21,13 @@ public class PipelinesListViewModelTests
                         PipelineStatus.Success,
                         DateTimeOffset.UtcNow.AddMinutes(-5),
                         12,
-                        1)
+                        1,
+                        Runs:
+                        [
+                            new PipelineRunResponse(
+                                42, 17, "Fix build", "main", PipelineStatus.Success,
+                                DateTimeOffset.UtcNow.AddMinutes(-5))
+                        ])
                 ],
                 TotalItems: 12)
         };
@@ -34,6 +40,31 @@ public class PipelinesListViewModelTests
         Assert.Equal(12, pipeline.SuccessfulRuns);
         Assert.Equal("Показано 1-5 из 12", viewModel.Pagination.ItemRangeInfo);
         Assert.Empty(viewModel.StatusMessage);
+    }
+
+    [Fact]
+    public async Task HistoryCommands_OpenSelectedPipelineAndReturnToList()
+    {
+        var apiClient = new StubApiClient
+        {
+            Result = new PipelinesLoadResult(
+                [new PipelineSummaryResponse(
+                    Guid.NewGuid(), "backend-ci", "main", PipelineStatus.Success,
+                    DateTimeOffset.UtcNow, 1, 0, Runs:
+                    [new PipelineRunResponse(42, 17, "Fix build", "main", PipelineStatus.Success, DateTimeOffset.UtcNow)])],
+                1)
+        };
+        var viewModel = new PipelinesListViewModel(apiClient);
+
+        await viewModel.LoadAsync();
+        var pipeline = Assert.Single(viewModel.Pipelines);
+        pipeline.OpenHistoryCommand.Execute(null);
+
+        Assert.Same(pipeline, viewModel.SelectedPipeline);
+
+        viewModel.CloseHistoryCommand.Execute(null);
+
+        Assert.Null(viewModel.SelectedPipeline);
     }
 
     [Fact]
@@ -75,6 +106,27 @@ public class PipelinesListViewModelTests
         Assert.Equal("backend-ci", Assert.Single(viewModel.Pipelines).PipelineName);
     }
 
+    [Fact]
+    public async Task ApplyFilters_ForwardsValuesAndReturnsToFirstPage()
+    {
+        var apiClient = new StubApiClient { Result = Page("filtered") };
+        var viewModel = new PipelinesListViewModel(apiClient)
+        {
+            SearchText = "backend",
+            BranchFilter = "main",
+            SelectedStatus = PipelineStatus.Success
+        };
+
+        viewModel.ApplyFiltersCommand.Execute(null);
+        await WaitUntil(() => apiClient.Requests.Count == 1);
+
+        var request = Assert.Single(apiClient.Requests);
+        Assert.Equal(1, request.Page);
+        Assert.Equal("backend", request.Search);
+        Assert.Equal("main", request.Branch);
+        Assert.Equal(PipelineStatus.Success, request.Status);
+    }
+
     private static PipelinesLoadResult Page(string pipelineName) =>
         new(
             [
@@ -109,6 +161,7 @@ public class PipelinesListViewModelTests
 
         public Dictionary<int, PipelinesLoadResult> ResultsByPage { get; } = [];
         public List<int> RequestedPages { get; } = [];
+        public List<(int Page, string? Search, string? Branch, PipelineStatus? Status)> Requests { get; } = [];
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
             string apiUrl,
@@ -123,9 +176,13 @@ public class PipelinesListViewModelTests
         public Task<PipelinesLoadResult> GetPipelinesAsync(
             int page,
             int pageSize,
+            string? search = null,
+            string? branch = null,
+            PipelineStatus? status = null,
             CancellationToken ct = default)
         {
             RequestedPages.Add(page);
+            Requests.Add((page, search, branch, status));
             return Task.FromResult(ResultsByPage.GetValueOrDefault(page, Result));
         }
     }

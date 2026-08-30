@@ -1,3 +1,4 @@
+using DevFlowMonitor.Contracts;
 using DevFlowMonitor.Wpf.Model;
 
 namespace DevFlowMonitor.Wpf.Service;
@@ -16,5 +17,8 @@ public interface IDevFlowApiClient
     Task<PipelinesLoadResult> GetPipelinesAsync(
         int page,
         int pageSize,
+        string? search = null,
+        string? branch = null,
+        PipelineStatus? status = null,
         CancellationToken ct = default);
 }

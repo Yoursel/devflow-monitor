@@ -1,6 +1,7 @@
-using System.Reflection;
 using DevFlowMonitor.Wpf.Service;
+using DevFlowMonitor.Wpf.Notification;
 using DevFlowMonitor.Wpf.View;
+using DevFlowMonitor.Wpf.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,10 @@ public class Bootstrapper
 
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IAppSettingsService, AppSettingsService>();
+        services.AddSingleton<ITrayIconService, TrayIconService>();
+        services.AddSingleton<PipelineNotificationDetector>();
+        services.AddSingleton<IDesktopNotificationService, WindowsDesktopNotificationService>();
+        services.AddHostedService<PipelineMonitoringService>();
         
         RegisterViews(services);
         RegisterViewModels(services);
@@ -50,14 +55,9 @@ public class Bootstrapper
 
     private static void RegisterViewModels(IServiceCollection services)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        var viewModelTypes = assembly
-            .GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false } && t.Name.EndsWith("ViewModel"));
-
-        foreach (var type in viewModelTypes)
-            services.AddSingleton(type);
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<PipelinesListViewModel>();
+        services.AddSingleton<SettingsViewModel>();
     }
 }
-

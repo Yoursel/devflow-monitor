@@ -4,7 +4,7 @@ using DevFlowMonitor.Wpf.ViewModel;
 
 namespace DevFlowMonitor.Wpf.View;
 
-public partial class SettingsView : UserControl
+public partial class SettingsView : System.Windows.Controls.UserControl
 {
     public SettingsView()
     {

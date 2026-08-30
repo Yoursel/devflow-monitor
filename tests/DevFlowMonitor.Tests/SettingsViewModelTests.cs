@@ -1,5 +1,6 @@
 using DevFlowMonitor.Contracts;
 using DevFlowMonitor.Wpf.Model;
+using DevFlowMonitor.Wpf.Notification;
 using DevFlowMonitor.Wpf.Service;
 using DevFlowMonitor.Wpf.ViewModel;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -80,6 +81,9 @@ public class SettingsViewModelTests
         viewModel.ApiUrl = "http://localhost:5268";
         viewModel.GitHubProfile = "Yoursel";
         viewModel.GitHubToken = "secret";
+        viewModel.NotificationsEnabled = true;
+        viewModel.NotifyOnSuccess = true;
+        viewModel.PollingIntervalSeconds = 120;
 
         viewModel.SaveCommand.Execute(null);
 
@@ -87,6 +91,44 @@ public class SettingsViewModelTests
         Assert.Equal("http://localhost:5268", settingsService.SavedSettings.ApiUrl);
         Assert.Equal("Yoursel", settingsService.SavedSettings.GitHubProfile);
         Assert.Equal("secret", settingsService.SavedSettings.GitHubToken);
+        Assert.True(settingsService.SavedSettings.NotificationsEnabled);
+        Assert.True(settingsService.SavedSettings.NotifyOnSuccess);
+        Assert.Equal(120, settingsService.SavedSettings.PollingIntervalSeconds);
+    }
+
+    [Fact]
+    public void ChangingNotificationSettings_PersistsThemImmediately()
+    {
+        var settingsService = new StubSettingsService();
+        var viewModel = CreateViewModel(new StubApiClient(), settingsService);
+
+        Assert.Null(settingsService.SavedSettings);
+
+        viewModel.NotificationsEnabled = true;
+        viewModel.NotifyOnSuccess = true;
+        viewModel.PollingIntervalSeconds = 120;
+
+        Assert.NotNull(settingsService.SavedSettings);
+        Assert.True(settingsService.SavedSettings.NotificationsEnabled);
+        Assert.True(settingsService.SavedSettings.NotifyOnSuccess);
+        Assert.Equal(120, settingsService.SavedSettings.PollingIntervalSeconds);
+    }
+
+    [Fact]
+    public void TestNotificationCommand_ShowsDesktopNotification()
+    {
+        var notificationService = new StubNotificationService();
+        var viewModel = new SettingsViewModel(
+            new StubSettingsService(),
+            NullLogger<SettingsViewModel>.Instance,
+            new StubApiClient(),
+            notificationService);
+
+        viewModel.TestNotificationCommand.Execute(null);
+
+        Assert.NotNull(notificationService.LastNotification);
+        Assert.Equal(PipelineStatus.Success, notificationService.LastNotification.Status);
+        Assert.Equal("Тестовое уведомление отправлено", viewModel.StatusMessage);
     }
 
     private static SettingsViewModel CreateViewModel(
@@ -96,7 +138,8 @@ public class SettingsViewModelTests
         return new SettingsViewModel(
             settingsService ?? new StubSettingsService(),
             NullLogger<SettingsViewModel>.Instance,
-            apiClient);
+            apiClient,
+            new StubNotificationService());
     }
 
     private sealed class StubApiClient : IDevFlowApiClient
@@ -126,6 +169,9 @@ public class SettingsViewModelTests
         public Task<PipelinesLoadResult> GetPipelinesAsync(
             int page,
             int pageSize,
+            string? search = null,
+            string? branch = null,
+            PipelineStatus? status = null,
             CancellationToken ct = default) =>
             Task.FromResult(PipelinesLoadResult.Failed("Not configured"));
     }
@@ -139,6 +185,23 @@ public class SettingsViewModelTests
         public void Save(AppSettings settings)
         {
             SavedSettings = settings;
+        }
+
+        public void Update(Action<AppSettings> update)
+        {
+            var settings = SavedSettings ?? Load();
+            update(settings);
+            Save(settings);
+        }
+    }
+
+    private sealed class StubNotificationService : IDesktopNotificationService
+    {
+        public PipelineNotification? LastNotification { get; private set; }
+
+        public void Show(PipelineNotification notification)
+        {
+            LastNotification = notification;
         }
     }
 }

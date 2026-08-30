@@ -238,5 +238,10 @@ public class DevFlowApiClientTests
         public void Save(AppSettings settings)
         {
         }
+
+        public void Update(Action<AppSettings> update)
+        {
+            update(settings ?? new AppSettings());
+        }
     }
 }

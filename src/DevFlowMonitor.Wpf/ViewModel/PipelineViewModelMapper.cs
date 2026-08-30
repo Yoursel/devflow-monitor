@@ -4,16 +4,18 @@ namespace DevFlowMonitor.Wpf.ViewModel;
 
 internal static class PipelineViewModelMapper
 {
-    public static PipelineViewModel Map(PipelineSummaryResponse pipeline) =>
-        new()
-        {
-            Status = pipeline.Status,
-            PipelineName = pipeline.PipelineName,
-            Branch = pipeline.Branch,
-            TimeAgo = FormatTimeAgo(pipeline.StartedAt),
-            SuccessfulRuns = pipeline.SuccessfulRuns,
-            FailedRuns = pipeline.FailedRuns
-        };
+    public static PipelineViewModel Map(
+        PipelineSummaryResponse pipeline,
+        Action<PipelineViewModel>? openHistory = null) =>
+        new(
+            pipeline.Status,
+            pipeline.PipelineName,
+            pipeline.Branch,
+            FormatTimeAgo(pipeline.StartedAt),
+            pipeline.SuccessfulRuns,
+            pipeline.FailedRuns,
+            pipeline.Runs ?? [],
+            openHistory);
 
     private static string FormatTimeAgo(DateTimeOffset startedAt)
     {
@@ -22,6 +24,8 @@ internal static class PipelineViewModelMapper
         if (elapsed.TotalMinutes < 1)
             return "только что";
 
-        return elapsed.TotalHours < 1 ? $"{(int)elapsed.TotalMinutes} мин. назад" : $"{(int)elapsed.TotalHours} ч. назад";
+        return elapsed.TotalHours < 1
+            ? $"{(int)elapsed.TotalMinutes} мин. назад"
+            : $"{(int)elapsed.TotalHours} ч. назад";
     }
 }

@@ -71,16 +71,24 @@
                                Foreground="{StaticResource MutedForeground}"
                                Margin="0 0 0 5"/>
 
-                    <Button Style="{StaticResource SecondaryButton}"
-                            Grid.Row="2"
+                    <Button Grid.Row="2"
                             Grid.Column="2"
                             HorizontalAlignment="Right"
                             Margin="5"
-                            Width="160">
+                            Width="160"
+                            Command="{Binding OpenHistoryCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                <Style.Triggers>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
                         <Button.Content>
                             <WrapPanel>
-                                <Image Source="{StaticResource RefreshIcon}"/>
-                                <TextBlock>Синхронизировать</TextBlock>
+                                <TextBlock>История запусков</TextBlock>
                             </WrapPanel>
                         </Button.Content>
                     </Button>

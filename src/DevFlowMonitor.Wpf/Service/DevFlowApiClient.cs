@@ -41,6 +41,9 @@ public class DevFlowApiClient(
     public async Task<PipelinesLoadResult> GetPipelinesAsync(
         int page,
         int pageSize,
+        string? search = null,
+        string? branch = null,
+        PipelineStatus? status = null,
         CancellationToken ct = default)
     {
         var settings = settingsService.Load();
@@ -51,7 +54,14 @@ public class DevFlowApiClient(
         var result = await PostApiJsonAsync<PagedResponse<PipelineSummaryResponse>>(
             baseUri,
             "/api/github/pipelines",
-            new GitHubPipelinesRequest(settings.GitHubProfile, settings.GitHubToken, page, pageSize),
+            new GitHubPipelinesRequest(
+                settings.GitHubProfile,
+                settings.GitHubToken,
+                page,
+                pageSize,
+                search,
+                branch,
+                status),
             "Pipelines",
             "Не удалось загрузить pipelines",
             ct);

@@ -1,113 +1,183 @@
 <UserControl x:Class="DevFlowMonitor.Wpf.View.PipelinesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModel="clr-namespace:DevFlowMonitor.Wpf.ViewModel"
              xmlns:dto="clr-namespace:DevFlowMonitor.Wpf.Dto"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewModel:PipelinesListViewModel}">
     <Grid Style="{StaticResource PageRoot}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <Grid x:Name="ListPanel">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedPipeline}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Pipelines</TextBlock>
-
-        <Button Grid.Row="0"
-                Width="140"
-                HorizontalAlignment="Right"
-                Style="{StaticResource MainButton}"
-                Margin="0 0 10 10"
-                Command="{Binding RefreshCommand}">
-            <Button.Content>
-                <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}" Text="Pipelines"/>
+            <Button Grid.Row="0" Width="140" HorizontalAlignment="Right"
+                    Style="{StaticResource MainButton}" Margin="0 0 0 10"
+                    Command="{Binding RefreshCommand}">
+                <WrapPanel>
                     <Image Source="{StaticResource RefreshIcon}"/>
-                    <TextBlock>Обновить</TextBlock>
+                    <TextBlock Text="Обновить"/>
                 </WrapPanel>
-            </Button.Content>
-        </Button>
+            </Button>
 
-        <ScrollViewer Grid.Row="1"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Disabled"
-                      Style="{StaticResource SectionContent}">
-            <ItemsControl ItemsSource="{Binding Pipelines}"
-                          HorizontalAlignment="Stretch">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-            </ItemsControl>
-        </ScrollViewer>
+            <Grid Grid.Row="1" Margin="0 0 0 18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="105"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="38"/>
+                </Grid.RowDefinitions>
 
-        <Grid Grid.Row="2" Margin="0 10 0 0">
-            <TextBlock Text="{Binding StatusMessage}"
-                       HorizontalAlignment="Left"
-                       Foreground="{StaticResource MutedForeground}"
-                       FontSize="13"/>
+                <TextBlock Grid.Column="0" Text="Поиск" Style="{StaticResource FormFieldLabel}"/>
+                <TextBlock Grid.Column="1" Text="Ветка" Style="{StaticResource FormFieldLabel}"/>
+                <TextBlock Grid.Column="2" Text="Статус" Style="{StaticResource FormFieldLabel}"/>
 
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Center">
-                <Button Style="{StaticResource SecondaryButton}"
-                        Command="{Binding Pagination.GoToFirstPageCommand}"
-                        Width="35">
-                    <Image Source="{StaticResource FirstPageIcon}" Margin="0"/>
-                </Button>
+                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource FormInputBorder}" Margin="0 0 12 0">
+                    <TextBox Style="{StaticResource FormInput}"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Название workflow или репозитория"/>
+                </Border>
+                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource FormInputBorder}" Margin="0 0 12 0">
+                    <TextBox Style="{StaticResource FormInput}"
+                             Text="{Binding BranchFilter, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Например: main"/>
+                </Border>
+                <ComboBox Grid.Row="1" Grid.Column="2" Margin="0 0 12 0"
+                          Style="{StaticResource FormComboBox}"
+                          VerticalContentAlignment="Center"
+                          ItemsSource="{Binding AvailableStatuses}"
+                          DisplayMemberPath="Label" SelectedValuePath="Value"
+                          SelectedValue="{Binding SelectedStatus}"/>
+                <Button Grid.Row="1" Grid.Column="3" Margin="0 0 12 0"
+                        Style="{StaticResource MainButton}" Command="{Binding ApplyFiltersCommand}"
+                        Content="Применить"/>
+                <Button Grid.Row="1" Grid.Column="4" Margin="0"
+                        Style="{StaticResource SecondaryButton}" Command="{Binding ClearFiltersCommand}"
+                        Content="Сбросить"/>
+            </Grid>
 
-                <Button Style="{StaticResource SecondaryButton}"
-                        Command="{Binding Pagination.GoToPreviousPageCommand}"
-                        Width="35">
-                    <Image Source="{StaticResource PreviousPageIcon}" Margin="0"/>
-                </Button>
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Style="{StaticResource SectionContent}">
+                <ItemsControl ItemsSource="{Binding Pipelines}" HorizontalAlignment="Stretch"/>
+            </ScrollViewer>
 
-                <ItemsControl ItemsSource="{Binding Pagination.VisiblePages}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type dto:PageInfo}">
-                            <Button Width="35"
-                                    Content="{Binding Number}"
-                                    Command="{Binding DataContext.Pagination.GoToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding Number}">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="Background" Value="#A2EFB7"/>
-                                                <Setter Property="Foreground" Value="#1A4A2E"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+            <Grid Grid.Row="3" Margin="0 10 0 0">
+                <TextBlock Text="{Binding StatusMessage}" HorizontalAlignment="Left"
+                           Foreground="{StaticResource MutedForeground}" FontSize="13"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button Style="{StaticResource SecondaryButton}" Command="{Binding Pagination.GoToFirstPageCommand}" Width="35">
+                        <Image Source="{StaticResource FirstPageIcon}" Margin="0"/>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Command="{Binding Pagination.GoToPreviousPageCommand}" Width="35">
+                        <Image Source="{StaticResource PreviousPageIcon}" Margin="0"/>
+                    </Button>
+                    <ItemsControl ItemsSource="{Binding Pagination.VisiblePages}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type dto:PageInfo}">
+                                <Button Width="35" Content="{Binding Number}"
+                                        Command="{Binding DataContext.Pagination.GoToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding Number}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="#A2EFB7"/>
+                                                    <Setter Property="Foreground" Value="#1A4A2E"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{StaticResource SecondaryButton}" Command="{Binding Pagination.GoToNextPageCommand}" Width="35">
+                        <Image Source="{StaticResource NextPageIcon}" Margin="0"/>
+                    </Button>
+                    <Button Style="{StaticResource SecondaryButton}" Command="{Binding Pagination.GoToLastPageCommand}" Width="35">
+                        <Image Source="{StaticResource LastPageIcon}" Margin="0"/>
+                    </Button>
+                </StackPanel>
+                <TextBlock Text="{Binding Pagination.ItemRangeInfo}" HorizontalAlignment="Right"
+                           Foreground="{StaticResource MutedForeground}" FontSize="13"/>
+            </Grid>
+        </Grid>
 
-                <Button Style="{StaticResource SecondaryButton}"
-                        Command="{Binding Pagination.GoToNextPageCommand}"
-                        Width="35">
-                    <Image Source="{StaticResource NextPageIcon}" Margin="0"/>
-                </Button>
-
-                <Button Style="{StaticResource SecondaryButton}"
-                        Command="{Binding Pagination.GoToLastPageCommand}"
-                        Width="35">
-                    <Image Source="{StaticResource LastPageIcon}" Margin="0"/>
-                </Button>
+        <Grid Background="#F0EBD8">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding SelectedPipeline}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Button Grid.Row="0" Width="110" HorizontalAlignment="Left"
+                    Style="{StaticResource SecondaryButton}" Command="{Binding CloseHistoryCommand}"
+                    Content="← Назад"/>
+            <StackPanel Grid.Row="1" Margin="0 15 0 18">
+                <TextBlock Text="История запусков" FontSize="20"/>
+                <TextBlock Text="{Binding SelectedPipeline.PipelineName}" Margin="0 8 0 0"
+                           FontSize="15" FontWeight="Bold"/>
             </StackPanel>
-
-            <TextBlock Text="{Binding Pagination.ItemRangeInfo}"
-                       HorizontalAlignment="Right"
-                       Foreground="{StaticResource MutedForeground}"
-                       FontSize="13"/>
+            <ListView Grid.Row="2"
+                      ItemsSource="{Binding SelectedPipeline.Runs}"
+                      Style="{StaticResource PipelineListStyle}"
+                      ItemContainerStyle="{StaticResource PipelineRowStyle}">
+                <ListView.View>
+                    <GridView ColumnHeaderContainerStyle="{StaticResource PipelineColumnHeaderStyle}">
+                        <GridViewColumn Header="СТАТУС" Width="120"
+                                        CellTemplate="{StaticResource StatusBadgeTemplate}"/>
+                        <GridViewColumn Header="ЗАПУСК" Width="90">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding RunNumber, StringFormat=\# {0}}" FontWeight="Bold"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="НАЗВАНИЕ" Width="260"
+                                        DisplayMemberBinding="{Binding Title}"/>
+                        <GridViewColumn Header="ВЕТКА" Width="180"
+                                        DisplayMemberBinding="{Binding Branch}"/>
+                        <GridViewColumn Header="ВРЕМЯ" Width="170">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
         </Grid>
     </Grid>
 </UserControl>

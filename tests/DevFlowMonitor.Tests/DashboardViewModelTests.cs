@@ -77,6 +77,9 @@ public class DashboardViewModelTests
         public Task<PipelinesLoadResult> GetPipelinesAsync(
             int page,
             int pageSize,
+            string? search = null,
+            string? branch = null,
+            PipelineStatus? status = null,
             CancellationToken ct = default) =>
             Task.FromResult(PipelinesLoadResult.Failed("Not configured"));
     }

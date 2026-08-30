@@ -11,6 +11,7 @@ namespace DevFlowMonitor.Wpf.Service;
 public class AppSettingsService : IAppSettingsService
 {
     private readonly ILogger<AppSettingsService> _logger;
+    private readonly Lock _syncRoot = new();
 
     private const string AppFolderName = "DevFlowMonitor";
     private const string SettingsFileName = "settings.json";
@@ -39,6 +40,12 @@ public class AppSettingsService : IAppSettingsService
     }
 
     public AppSettings Load()
+    {
+        lock (_syncRoot)
+            return LoadCore();
+    }
+
+    private AppSettings LoadCore()
     {
         if (!File.Exists(_filePath))
         {
@@ -90,18 +97,48 @@ public class AppSettingsService : IAppSettingsService
                 ex,
                 "Protected password in {FilePath} is not valid base64, returning defaults",
                 _filePath);
-            
+
+            return new AppSettings();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(
+                ex,
+                "Settings file at {FilePath} cannot be read, returning defaults",
+                _filePath);
+
             return new AppSettings();
         }
     }
 
     public void Save(AppSettings settings)
     {
+        lock (_syncRoot)
+            SaveCore(settings);
+    }
+
+    public void Update(Action<AppSettings> update)
+    {
+        ArgumentNullException.ThrowIfNull(update);
+
+        lock (_syncRoot)
+        {
+            var settings = LoadCore();
+            update(settings);
+            SaveCore(settings);
+        }
+    }
+
+    private void SaveCore(AppSettings settings)
+    {
         var dto = new AppSettingsPersistenceDto
         {
             ApiUrl = settings.ApiUrl,
             GitHubProfile = settings.GitHubProfile,
-            ProtectedGitHubToken = Protect(settings.GitHubToken)
+            ProtectedGitHubToken = Protect(settings.GitHubToken),
+            NotificationsEnabled = settings.NotificationsEnabled,
+            NotifyOnSuccess = settings.NotifyOnSuccess,
+            PollingIntervalSeconds = settings.PollingIntervalSeconds
         };
 
         var json = JsonSerializer.Serialize(dto, JsonOptions);
@@ -109,7 +146,6 @@ public class AppSettingsService : IAppSettingsService
 
         _logger.LogInformation("Settings saved to {FilePath}", _filePath);
     }
-
 
     private static string? Protect(string plainText)
     {
@@ -147,7 +183,12 @@ public class AppSettingsService : IAppSettingsService
     {
         var settings = new AppSettings
         {
-            GitHubToken = Unprotect(dto.ProtectedGitHubToken ?? dto.ProtectedPassword)
+            GitHubToken = Unprotect(dto.ProtectedGitHubToken ?? dto.ProtectedPassword),
+            NotificationsEnabled = dto.NotificationsEnabled,
+            NotifyOnSuccess = dto.NotifyOnSuccess,
+            PollingIntervalSeconds = dto.PollingIntervalSeconds > 0
+                ? dto.PollingIntervalSeconds
+                : 60
         };
 
         if (LooksLikeLegacyGitHubValue(dto.ApiUrl))

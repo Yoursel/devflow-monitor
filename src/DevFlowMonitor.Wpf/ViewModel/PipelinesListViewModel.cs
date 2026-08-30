@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using DevFlowMonitor.Contracts;
 using DevFlowMonitor.Wpf.Command;
 using DevFlowMonitor.Wpf.Service;
 
@@ -20,11 +21,53 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
         _apiClient = apiClient;
         Pagination = new PaginationViewModel(PageSize, page => LoadPageAsync(page));
         RefreshCommand = new AsyncRelayCommand(() => LoadAsync());
+        ApplyFiltersCommand = new AsyncRelayCommand(ApplyFiltersAsync);
+        ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync);
+        CloseHistoryCommand = new RelayCommand(() => SelectedPipeline = null);
     }
 
     public ObservableCollection<PipelineViewModel> Pipelines { get; } = [];
     public PaginationViewModel Pagination { get; }
     public ICommand RefreshCommand { get; }
+    public ICommand ApplyFiltersCommand { get; }
+    public ICommand ClearFiltersCommand { get; }
+    public ICommand CloseHistoryCommand { get; }
+    public IReadOnlyList<PipelineStatusFilterOption> AvailableStatuses { get; } =
+    [
+        new("Все статусы", null),
+        new("Успешные", PipelineStatus.Success),
+        new("С ошибкой", PipelineStatus.Failed),
+        new("Выполняются", PipelineStatus.Running),
+        new("Отменённые", PipelineStatus.Cancelled)
+    ];
+
+    private string _searchText = string.Empty;
+    public string SearchText
+    {
+        get => _searchText;
+        set => SetField(ref _searchText, value);
+    }
+
+    private string _branchFilter = string.Empty;
+    public string BranchFilter
+    {
+        get => _branchFilter;
+        set => SetField(ref _branchFilter, value);
+    }
+
+    private PipelineStatus? _selectedStatus;
+    public PipelineStatus? SelectedStatus
+    {
+        get => _selectedStatus;
+        set => SetField(ref _selectedStatus, value);
+    }
+
+    private PipelineViewModel? _selectedPipeline;
+    public PipelineViewModel? SelectedPipeline
+    {
+        get => _selectedPipeline;
+        private set => SetField(ref _selectedPipeline, value);
+    }
 
     public Task ActivateAsync(CancellationToken ct = default) =>
         LoadAsync(ct);
@@ -33,28 +76,14 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
     public bool IsLoading
     {
         get => _isLoading;
-        private set
-        {
-            if (_isLoading == value)
-                return;
-
-            _isLoading = value;
-            OnPropertyChanged();
-        }
+        private set => SetField(ref _isLoading, value);
     }
 
     private string _statusMessage = string.Empty;
     public string StatusMessage
     {
         get => _statusMessage;
-        private set
-        {
-            if (_statusMessage == value)
-                return;
-
-            _statusMessage = value;
-            OnPropertyChanged();
-        }
+        private set => SetField(ref _statusMessage, value);
     }
 
     public Task LoadAsync(CancellationToken ct = default) => LoadPageAsync(_currentPage, ct);
@@ -66,7 +95,13 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
 
         try
         {
-            var result = await _apiClient.GetPipelinesAsync(page, PageSize, ct);
+            var result = await _apiClient.GetPipelinesAsync(
+                page,
+                PageSize,
+                SearchText,
+                BranchFilter,
+                SelectedStatus,
+                ct);
 
             if (!result.IsSuccess)
             {
@@ -78,7 +113,7 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
             Pipelines.Clear();
 
             foreach (var pipeline in result.Items)
-                Pipelines.Add(PipelineViewModelMapper.Map(pipeline));
+                Pipelines.Add(PipelineViewModelMapper.Map(pipeline, ShowHistory));
 
             _currentPage = page;
             _totalItems = result.TotalItems;
@@ -91,8 +126,38 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
         }
     }
 
+    private void ShowHistory(PipelineViewModel pipeline) => SelectedPipeline = pipeline;
+
+    private Task ApplyFiltersAsync()
+    {
+        return LoadFirstPageAsync();
+    }
+
+    private Task ClearFiltersAsync()
+    {
+        SearchText = string.Empty;
+        BranchFilter = string.Empty;
+        SelectedStatus = null;
+        return LoadFirstPageAsync();
+    }
+
+    private Task LoadFirstPageAsync()
+    {
+        _currentPage = 1;
+        return LoadPageAsync(_currentPage);
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return;
+
+        field = value;
+        OnPropertyChanged(name);
+    }
 }

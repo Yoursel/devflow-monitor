@@ -7,4 +7,5 @@ public record PipelineSummaryResponse(
     PipelineStatus Status,
     DateTimeOffset StartedAt,
     int SuccessfulRuns,
-    int FailedRuns);
+    int FailedRuns,
+    IReadOnlyList<PipelineRunResponse>? Runs = null);

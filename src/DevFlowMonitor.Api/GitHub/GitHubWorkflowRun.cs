@@ -7,6 +7,8 @@ internal sealed record GitHubWorkflowRun(
     long Id,
     [property: JsonPropertyName("workflow_id")]
     long WorkflowId,
+    [property: JsonPropertyName("run_number")]
+    long RunNumber,
     [property: JsonPropertyName("name")]
     string? Name,
     [property: JsonPropertyName("display_title")]

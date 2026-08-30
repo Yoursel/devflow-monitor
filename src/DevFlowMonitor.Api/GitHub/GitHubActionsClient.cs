@@ -54,7 +54,7 @@ internal sealed class GitHubActionsClient(
         if (!runsResult.IsSuccess)
             return GitHubActionsResult<PagedResponse<PipelineSummaryResponse>>.Failed(runsResult.ErrorMessage!);
 
-        var pipelines = runsResult.Value!
+        var pipelines = ApplyFilters(runsResult.Value!, request)
             .OrderByDescending(pipeline => pipeline.StartedAt)
             .ToArray();
 
@@ -69,6 +69,32 @@ internal sealed class GitHubActionsClient(
                 request.Page,
                 request.PageSize,
                 pipelines.Length));
+    }
+
+    internal static IEnumerable<PipelineSummaryResponse> ApplyFilters(
+        IEnumerable<PipelineSummaryResponse> pipelines,
+        GitHubPipelinesRequest request)
+    {
+        var filtered = pipelines;
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim();
+            filtered = filtered.Where(pipeline =>
+                pipeline.PipelineName.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Branch))
+        {
+            var branch = request.Branch.Trim();
+            filtered = filtered.Where(pipeline =>
+                pipeline.Branch.Contains(branch, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (request.Status is { } status)
+            filtered = filtered.Where(pipeline => pipeline.Status == status);
+
+        return filtered;
     }
 
     public async Task<GitHubActionsResult<DashboardSummaryResponse>> GetDashboardAsync(
@@ -109,7 +135,7 @@ internal sealed class GitHubActionsClient(
         string token,
         CancellationToken ct)
     {
-        var repositories = new List<GitHubRepository>();
+        List<GitHubRepository> repositories = [];
 
         for (var page = 1; page <= 5; page++)
         {
@@ -152,7 +178,7 @@ internal sealed class GitHubActionsClient(
         bool aggregateByWorkflow,
         CancellationToken ct)
     {
-        var pipelines = new List<PipelineSummaryResponse>();
+        List<PipelineSummaryResponse> pipelines = [];
         var successfulRepositories = 0;
         string? firstError = null;
 
@@ -293,8 +319,18 @@ internal sealed class GitHubActionsClient(
             Status: latestStatus,
             StartedAt: latestRun.RunStartedAt ?? latestRun.CreatedAt ?? DateTimeOffset.UtcNow,
             SuccessfulRuns: runs.Count(run => MapStatus(run.Status, run.Conclusion) == PipelineStatus.Success),
-            FailedRuns: runs.Count(run => MapStatus(run.Status, run.Conclusion) == PipelineStatus.Failed));
+            FailedRuns: runs.Count(run => MapStatus(run.Status, run.Conclusion) == PipelineStatus.Failed),
+            Runs: runs.Select(MapRun).ToArray());
     }
+
+    private static PipelineRunResponse MapRun(GitHubWorkflowRun run) =>
+        new(
+            run.Id,
+            run.RunNumber,
+            FirstNotEmpty(run.DisplayTitle, run.Name) ?? $"Run {run.Id}",
+            FirstNotEmpty(run.HeadBranch) ?? "-",
+            MapStatus(run.Status, run.Conclusion),
+            run.RunStartedAt ?? run.CreatedAt ?? DateTimeOffset.UtcNow);
 
     private static string GetWorkflowKey(GitHubWorkflowRun run) =>
         run.WorkflowId > 0

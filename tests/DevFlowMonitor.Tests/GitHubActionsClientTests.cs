@@ -9,6 +9,29 @@ namespace DevFlowMonitor.Tests;
 public class GitHubActionsClientTests
 {
     [Fact]
+    public void ApplyFilters_CombinesSearchBranchAndStatus()
+    {
+        PipelineSummaryResponse[] pipelines =
+        [
+            Pipeline("team/backend / CI", "main", PipelineStatus.Success),
+            Pipeline("team/backend / Deploy", "release", PipelineStatus.Failed),
+            Pipeline("team/frontend / CI", "main", PipelineStatus.Success)
+        ];
+        var request = new GitHubPipelinesRequest(
+            "team",
+            "token",
+            1,
+            5,
+            Search: "BACKEND",
+            Branch: "MAI",
+            Status: PipelineStatus.Success);
+
+        var result = GitHubActionsClient.ApplyFilters(pipelines, request).ToArray();
+
+        Assert.Equal("team/backend / CI", Assert.Single(result).PipelineName);
+    }
+
+    [Fact]
     public void AggregateRuns_GroupsSameWorkflowAndCountsOutcomes()
     {
         var repository = new GitHubRepository("Yoursel", "HhSearchByFiltersBot", "Yoursel/HhSearchByFiltersBot");
@@ -28,6 +51,12 @@ public class GitHubActionsClientTests
         Assert.Equal(1, pipeline.SuccessfulRuns);
         Assert.Equal(3, pipeline.FailedRuns);
         Assert.Equal(now, pipeline.StartedAt);
+        Assert.Collection(
+            pipeline.Runs!,
+            run => Assert.Equal(4, run.RunNumber),
+            run => Assert.Equal(3, run.RunNumber),
+            run => Assert.Equal(2, run.RunNumber),
+            run => Assert.Equal(1, run.RunNumber));
     }
 
     [Theory]
@@ -101,6 +130,7 @@ public class GitHubActionsClientTests
         new(
             id,
             workflowId,
+            id,
             name,
             "commit title",
             "main",
@@ -108,6 +138,12 @@ public class GitHubActionsClientTests
             conclusion,
             startedAt,
             startedAt);
+
+    private static PipelineSummaryResponse Pipeline(
+        string name,
+        string branch,
+        PipelineStatus status) =>
+        new(Guid.NewGuid(), name, branch, status, DateTimeOffset.UtcNow, 1, 0);
 
     private static HttpResponseMessage JsonResponse(string json) =>
         new(HttpStatusCode.OK)

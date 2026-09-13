@@ -9,12 +9,20 @@ internal sealed record GitHubWorkflowRun(
     long WorkflowId,
     [property: JsonPropertyName("run_number")]
     long RunNumber,
+    [property: JsonPropertyName("run_attempt")]
+    int RunAttempt,
     [property: JsonPropertyName("name")]
     string? Name,
     [property: JsonPropertyName("display_title")]
     string? DisplayTitle,
     [property: JsonPropertyName("head_branch")]
     string? HeadBranch,
+    [property: JsonPropertyName("head_sha")]
+    string? HeadSha,
+    [property: JsonPropertyName("path")]
+    string? Path,
+    [property: JsonPropertyName("event")]
+    string? Event,
     [property: JsonPropertyName("status")]
     string? Status,
     [property: JsonPropertyName("conclusion")]
@@ -22,4 +30,12 @@ internal sealed record GitHubWorkflowRun(
     [property: JsonPropertyName("run_started_at")]
     DateTimeOffset? RunStartedAt,
     [property: JsonPropertyName("created_at")]
-    DateTimeOffset? CreatedAt);
+    DateTimeOffset? CreatedAt,
+    [property: JsonPropertyName("updated_at")]
+    DateTimeOffset? UpdatedAt,
+    [property: JsonPropertyName("html_url")]
+    string? HtmlUrl,
+    [property: JsonPropertyName("actor")]
+    GitHubActorResponse? Actor,
+    [property: JsonPropertyName("head_commit")]
+    GitHubCommitResponse? HeadCommit);

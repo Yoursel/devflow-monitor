@@ -8,6 +8,18 @@ namespace DevFlowMonitor.Tests;
 
 public class GitHubActionsClientTests
 {
+    [Theory]
+    [InlineData("queued")]
+    [InlineData("in_progress")]
+    [InlineData("waiting")]
+    [InlineData("requested")]
+    public void ToPipelineStatus_ForActiveGitHubStatus_ReturnsRunning(string status)
+    {
+        var result = GitHubRunOutcome.ToPipelineStatus(status, conclusion: null);
+
+        Assert.Equal(PipelineStatus.Running, result);
+    }
+
     [Fact]
     public void ApplyFilters_CombinesSearchBranchAndStatus()
     {
@@ -111,7 +123,8 @@ public class GitHubActionsClientTests
             _ => new HttpResponseMessage(HttpStatusCode.NotFound)
         });
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") };
-        var client = new GitHubActionsClient(httpClient, NullLogger<GitHubActionsClient>.Instance);
+        var apiClient = new GitHubApiClient(httpClient, NullLogger<GitHubApiClient>.Instance);
+        var client = new GitHubActionsClient(apiClient, NullLogger<GitHubActionsClient>.Instance);
 
         var result = await client.GetPipelinesAsync(
             new GitHubPipelinesRequest("Yoursel", "token", 1, 5));
@@ -131,13 +144,21 @@ public class GitHubActionsClientTests
             id,
             workflowId,
             id,
+            1,
             name,
             "commit title",
             "main",
+            "sha",
+            null,
+            "push",
             "completed",
             conclusion,
             startedAt,
-            startedAt);
+            startedAt,
+            startedAt,
+            null,
+            null,
+            null);
 
     private static PipelineSummaryResponse Pipeline(
         string name,

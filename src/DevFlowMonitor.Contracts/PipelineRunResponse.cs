@@ -6,4 +6,6 @@ public sealed record PipelineRunResponse(
     string Title,
     string Branch,
     PipelineStatus Status,
-    DateTimeOffset StartedAt);
+    DateTimeOffset StartedAt,
+    int AttemptCount = 1,
+    RerunOutcome RerunOutcome = RerunOutcome.NotRetried);

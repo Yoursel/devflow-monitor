@@ -1,12 +1,9 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
 using DevFlowMonitor.Contracts;
 
 namespace DevFlowMonitor.Api.GitHub;
 
 internal sealed class GitHubActionsClient(
-    HttpClient httpClient,
+    IGitHubApiClient apiClient,
     ILogger<GitHubActionsClient> logger) : IGitHubActionsClient
 {
     public async Task<GitHubActionsResult<GitHubConnectionResponse>> CheckConnectionAsync(
@@ -139,7 +136,7 @@ internal sealed class GitHubActionsClient(
 
         for (var page = 1; page <= 5; page++)
         {
-            var result = await GetGitHubJsonAsync<IReadOnlyList<GitHubRepositoryResponse>>(
+            var result = await apiClient.GetAsync<IReadOnlyList<GitHubRepositoryResponse>>(
                 $"user/repos?visibility=all&affiliation=owner,collaborator,organization_member&per_page=100&page={page}",
                 token,
                 "GitHub repositories",
@@ -184,7 +181,7 @@ internal sealed class GitHubActionsClient(
 
         foreach (var repository in repositories)
         {
-            var result = await GetGitHubJsonAsync<GitHubWorkflowRunsResponse>(
+            var result = await apiClient.GetAsync<GitHubWorkflowRunsResponse>(
                 $"repos/{repository.Owner}/{repository.Name}/actions/runs?per_page={perRepository}&page=1",
                 token,
                 "GitHub workflow runs",
@@ -214,80 +211,6 @@ internal sealed class GitHubActionsClient(
             : GitHubActionsResult<IReadOnlyList<PipelineSummaryResponse>>.Success(pipelines);
     }
 
-    private async Task<GitHubActionsResult<T>> GetGitHubJsonAsync<T>(
-        string relativeUrl,
-        string token,
-        string operationName,
-        string failedMessage,
-        CancellationToken ct)
-    {
-        try
-        {
-            using var request = CreateGitHubRequest(relativeUrl, token);
-            using var response = await httpClient
-                .SendAsync(request, ct)
-                .ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning(
-                    "{OperationName} request returned HTTP {StatusCode}",
-                    operationName,
-                    (int)response.StatusCode);
-
-                return GitHubActionsResult<T>.Failed(
-                    CreateGitHubHttpErrorMessage((int)response.StatusCode));
-            }
-
-            var result = await response.Content
-                .ReadFromJsonAsync<T>(cancellationToken: ct)
-                .ConfigureAwait(false);
-
-            return result is null
-                ? GitHubActionsResult<T>.Failed("GitHub вернул пустой ответ")
-                : GitHubActionsResult<T>.Success(result);
-        }
-        catch (HttpRequestException ex)
-        {
-            logger.LogError(ex, "HTTP error while loading {OperationName}", operationName);
-            return GitHubActionsResult<T>.Failed(failedMessage);
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            logger.LogWarning("{OperationName} request timed out", operationName);
-            return GitHubActionsResult<T>.Failed("Превышено время ожидания (10 сек)");
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (JsonException ex)
-        {
-            logger.LogError(ex, "Invalid {OperationName} response", operationName);
-            return GitHubActionsResult<T>.Failed("GitHub вернул ответ в некорректном формате");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Unexpected error while loading {OperationName}", operationName);
-            return GitHubActionsResult<T>.Failed(failedMessage);
-        }
-    }
-
-    private static HttpRequestMessage CreateGitHubRequest(
-        string relativeUrl,
-        string token)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
-
-        request.Headers.Accept.ParseAdd("application/vnd.github+json");
-        request.Headers.UserAgent.ParseAdd("DevFlowMonitor");
-
-        if (!string.IsNullOrWhiteSpace(token))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
-
-        return request;
-    }
-
     internal static IReadOnlyList<PipelineSummaryResponse> AggregateRuns(
         GitHubRepository repository,
         IReadOnlyList<GitHubWorkflowRun> runs) =>
@@ -305,7 +228,7 @@ internal sealed class GitHubActionsClient(
             .OrderByDescending(run => run.RunStartedAt ?? run.CreatedAt ?? DateTimeOffset.MinValue)
             .ToArray();
         var latestRun = runs[0];
-        var latestStatus = MapStatus(latestRun.Status, latestRun.Conclusion);
+        var latestStatus = GitHubRunOutcome.ToPipelineStatus(latestRun.Status, latestRun.Conclusion);
         var workflowName = runs
             .Select(run => FirstNotEmpty(run.Name))
             .FirstOrDefault(name => name is not null && !LooksLikeWorkflowPath(name))
@@ -318,8 +241,8 @@ internal sealed class GitHubActionsClient(
             Branch: FirstNotEmpty(latestRun.HeadBranch) ?? "-",
             Status: latestStatus,
             StartedAt: latestRun.RunStartedAt ?? latestRun.CreatedAt ?? DateTimeOffset.UtcNow,
-            SuccessfulRuns: runs.Count(run => MapStatus(run.Status, run.Conclusion) == PipelineStatus.Success),
-            FailedRuns: runs.Count(run => MapStatus(run.Status, run.Conclusion) == PipelineStatus.Failed),
+            SuccessfulRuns: runs.Count(run => GitHubRunOutcome.ToPipelineStatus(run.Status, run.Conclusion) == PipelineStatus.Success),
+            FailedRuns: runs.Count(run => GitHubRunOutcome.ToPipelineStatus(run.Status, run.Conclusion) == PipelineStatus.Failed),
             Runs: runs.Select(MapRun).ToArray());
     }
 
@@ -329,7 +252,7 @@ internal sealed class GitHubActionsClient(
             run.RunNumber,
             FirstNotEmpty(run.DisplayTitle, run.Name) ?? $"Run {run.Id}",
             FirstNotEmpty(run.HeadBranch) ?? "-",
-            MapStatus(run.Status, run.Conclusion),
+            GitHubRunOutcome.ToPipelineStatus(run.Status, run.Conclusion),
             run.RunStartedAt ?? run.CreatedAt ?? DateTimeOffset.UtcNow);
 
     private static string GetWorkflowKey(GitHubWorkflowRun run) =>
@@ -343,19 +266,6 @@ internal sealed class GitHubActionsClient(
         || value.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)
         || value.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase);
 
-    private static PipelineStatus MapStatus(string? status, string? conclusion)
-    {
-        if (!string.Equals(status, "completed", StringComparison.OrdinalIgnoreCase))
-            return PipelineStatus.Running;
-
-        return conclusion?.Trim().ToLowerInvariant() switch
-        {
-            "success" => PipelineStatus.Success,
-            "cancelled" or "skipped" or "neutral" => PipelineStatus.Cancelled,
-            _ => PipelineStatus.Failed
-        };
-    }
-
     private static Guid CreatePipelineId(long runId)
     {
         var bytes = new byte[16];
@@ -366,15 +276,6 @@ internal sealed class GitHubActionsClient(
 
     private static string? FirstNotEmpty(params string?[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim();
-
-    private static string CreateGitHubHttpErrorMessage(int statusCode) =>
-        statusCode switch
-        {
-            401 => "GitHub отклонил токен доступа",
-            403 => "Нет доступа к GitHub Actions или превышен лимит запросов",
-            404 => "GitHub репозиторий не найден или нет доступа",
-            _ => $"GitHub вернул HTTP {statusCode}"
-        };
 
     private static bool TryCreateTarget(
         GitHubConnectionRequest request,
@@ -388,7 +289,7 @@ internal sealed class GitHubActionsClient(
         out GitHubTarget target,
         out string validationError)
     {
-        var owner = GetGitHubOwner(profileOrOwner);
+        var owner = GitHubOwnerParser.Parse(profileOrOwner);
 
         if (string.IsNullOrWhiteSpace(owner))
         {
@@ -409,32 +310,4 @@ internal sealed class GitHubActionsClient(
         return true;
     }
 
-    private static string GetGitHubOwner(string profileOrOwner)
-    {
-        if (string.IsNullOrWhiteSpace(profileOrOwner))
-            return string.Empty;
-
-        var value = profileOrOwner.Trim().TrimStart('@').TrimEnd('/');
-
-        if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
-            return IsGitHubHost(uri.Host)
-                ? GetFirstPathSegment(uri.AbsolutePath)
-                : string.Empty;
-
-        if (value.StartsWith("github.com/", StringComparison.OrdinalIgnoreCase))
-            value = value["github.com/".Length..];
-        else if (value.StartsWith("www.github.com/", StringComparison.OrdinalIgnoreCase))
-            value = value["www.github.com/".Length..];
-
-        return GetFirstPathSegment(value);
-    }
-
-    private static bool IsGitHubHost(string host) =>
-        host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
-        || host.Equals("www.github.com", StringComparison.OrdinalIgnoreCase);
-
-    private static string GetFirstPathSegment(string value) =>
-        value
-            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .FirstOrDefault() ?? string.Empty;
 }

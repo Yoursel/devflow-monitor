@@ -28,7 +28,7 @@ public class AppSettingsService : IAppSettingsService
     public AppSettingsService(ILogger<AppSettingsService> logger)
     {
         _logger = logger;
-        
+
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             AppFolderName);
@@ -79,23 +79,23 @@ public class AppSettingsService : IAppSettingsService
                 ex,
                 "Settings file at {FilePath} is corrupted (invalid JSON), returning defaults",
                 _filePath);
-            
+
             return new AppSettings();
         }
         catch (CryptographicException ex)
         {
             _logger.LogWarning(
                 ex,
-                "Failed to decrypt password in {FilePath} (file may be from another machine or user), returning defaults",
+                "Failed to decrypt GitHub token in {FilePath} (file may be from another machine or user), returning defaults",
                 _filePath);
-            
+
             return new AppSettings();
         }
         catch (FormatException ex)
         {
             _logger.LogWarning(
                 ex,
-                "Protected password in {FilePath} is not valid base64, returning defaults",
+                "Protected GitHub token in {FilePath} is not valid base64, returning defaults",
                 _filePath);
 
             return new AppSettings();
@@ -136,13 +136,31 @@ public class AppSettingsService : IAppSettingsService
             ApiUrl = settings.ApiUrl,
             GitHubProfile = settings.GitHubProfile,
             ProtectedGitHubToken = Protect(settings.GitHubToken),
+            ActiveGitHubAccountId = settings.ActiveGitHubAccountId,
+            GitHubAccounts = settings.GitHubAccounts.Select(account => new GitHubAccountPersistenceDto
+            {
+                Id = account.Id,
+                Owner = account.Owner,
+                ProtectedToken = Protect(account.Token),
+                LastSynchronizedAt = account.LastSynchronizedAt
+            }).ToList(),
             NotificationsEnabled = settings.NotificationsEnabled,
             NotifyOnSuccess = settings.NotifyOnSuccess,
             PollingIntervalSeconds = settings.PollingIntervalSeconds
         };
 
         var json = JsonSerializer.Serialize(dto, JsonOptions);
-        File.WriteAllText(_filePath, json);
+        var temporaryFilePath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temporaryFilePath, json);
+            File.Move(temporaryFilePath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryFilePath))
+                File.Delete(temporaryFilePath);
+        }
 
         _logger.LogInformation("Settings saved to {FilePath}", _filePath);
     }
@@ -184,6 +202,19 @@ public class AppSettingsService : IAppSettingsService
         var settings = new AppSettings
         {
             GitHubToken = Unprotect(dto.ProtectedGitHubToken ?? dto.ProtectedPassword),
+            ActiveGitHubAccountId = dto.ActiveGitHubAccountId is { } accountId && accountId != Guid.Empty
+                ? accountId
+                : null,
+            GitHubAccounts = (dto.GitHubAccounts ?? [])
+                .Where(account => account.Id != Guid.Empty)
+                .Select(account => new GitHubAccountSettings
+                {
+                    Id = account.Id,
+                    Owner = account.Owner,
+                    Token = Unprotect(account.ProtectedToken),
+                    LastSynchronizedAt = account.LastSynchronizedAt
+                })
+                .ToList(),
             NotificationsEnabled = dto.NotificationsEnabled,
             NotifyOnSuccess = dto.NotifyOnSuccess,
             PollingIntervalSeconds = dto.PollingIntervalSeconds > 0
@@ -196,14 +227,22 @@ public class AppSettingsService : IAppSettingsService
             settings.GitHubProfile = string.IsNullOrWhiteSpace(dto.GitHubProfile)
                 ? dto.ApiUrl
                 : dto.GitHubProfile;
-
-            return settings;
+        }
+        else
+        {
+            settings.ApiUrl = string.IsNullOrWhiteSpace(dto.ApiUrl)
+                ? settings.ApiUrl
+                : dto.ApiUrl;
+            settings.GitHubProfile = dto.GitHubProfile;
         }
 
-        settings.ApiUrl = string.IsNullOrWhiteSpace(dto.ApiUrl)
-            ? settings.ApiUrl
-            : dto.ApiUrl;
-        settings.GitHubProfile = dto.GitHubProfile;
+        var activeAccount = settings.GitHubAccounts.FirstOrDefault(account =>
+            account.Id == settings.ActiveGitHubAccountId);
+        if (activeAccount is not null)
+        {
+            settings.GitHubProfile = activeAccount.Owner;
+            settings.GitHubToken = activeAccount.Token;
+        }
 
         return settings;
     }

@@ -39,7 +39,32 @@ public class PipelinesListViewModelTests
         Assert.Equal("backend-ci", pipeline.PipelineName);
         Assert.Equal(12, pipeline.SuccessfulRuns);
         Assert.Equal("Показано 1-5 из 12", viewModel.Pagination.ItemRangeInfo);
-        Assert.Empty(viewModel.StatusMessage);
+        Assert.Equal("Найдено пайплайнов: 12", viewModel.StatusMessage);
+    }
+
+    [Fact]
+    public async Task RefreshCommand_SynchronizesBeforeLoadingFirstPage()
+    {
+        var apiClient = new StubApiClient { Result = Page("desktop-ci") };
+        var viewModel = new PipelinesListViewModel(apiClient);
+
+        viewModel.RefreshCommand.Execute(null);
+        await WaitUntil(() => apiClient.RefreshRequests == 1);
+
+        Assert.Equal([1], apiClient.RequestedPages);
+        Assert.Equal("desktop-ci", Assert.Single(viewModel.Pipelines).PipelineName);
+    }
+
+    [Fact]
+    public async Task ActivateAsync_SynchronizesBeforeLoadingPipelines()
+    {
+        var apiClient = new StubApiClient { Result = Page("desktop-ci") };
+        var viewModel = new PipelinesListViewModel(apiClient);
+
+        await viewModel.ActivateAsync();
+
+        Assert.Equal(1, apiClient.RefreshRequests);
+        Assert.Equal([1], apiClient.RequestedPages);
     }
 
     [Fact]
@@ -162,6 +187,7 @@ public class PipelinesListViewModelTests
         public Dictionary<int, PipelinesLoadResult> ResultsByPage { get; } = [];
         public List<int> RequestedPages { get; } = [];
         public List<(int Page, string? Search, string? Branch, PipelineStatus? Status)> Requests { get; } = [];
+        public int RefreshRequests { get; private set; }
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
             string apiUrl,
@@ -169,6 +195,37 @@ public class PipelinesListViewModelTests
             string gitHubToken,
             CancellationToken ct = default) =>
             Task.FromResult(new ConnectionCheckResult(ConnectionStatus.Connected, "Connected"));
+
+        public Task<ApiOperationResult<GitHubAccountResponse>> AddGitHubAccountAsync(
+            string apiUrl, string gitHubProfile, string gitHubToken, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<GitHubAccountResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<GitHubSyncResponse>> SynchronizeGitHubAccountAsync(
+            string apiUrl, Guid accountId, string gitHubToken, bool fullHistory = true, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<GitHubSyncResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<bool>> DeleteGitHubAccountAsync(
+            string apiUrl, Guid accountId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<bool>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<MetricsSummaryResponse>> GetMetricsAsync(CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<MetricsSummaryResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<IReadOnlyList<RepositoryResponse>>> GetRepositoriesAsync(CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<IReadOnlyList<RepositoryResponse>>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<IReadOnlyList<WorkflowResponse>>> GetWorkflowsAsync(
+            Guid repositoryId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<IReadOnlyList<WorkflowResponse>>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<AnalyticsResponse>> GetAnalyticsAsync(
+            DateTimeOffset periodStart, DateTimeOffset periodEnd, Guid? repositoryId = null,
+            Guid? workflowId = null, PipelineStatus? status = null, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<AnalyticsResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<RunDetailsResponse>> GetRunDetailsAsync(
+            Guid runId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<RunDetailsResponse>.Failed("Not configured"));
 
         public Task<DashboardLoadResult> GetDashboardAsync(CancellationToken ct = default) =>
             Task.FromResult(DashboardLoadResult.Failed("Not configured"));
@@ -184,6 +241,18 @@ public class PipelinesListViewModelTests
             RequestedPages.Add(page);
             Requests.Add((page, search, branch, status));
             return Task.FromResult(ResultsByPage.GetValueOrDefault(page, Result));
+        }
+
+        public Task<PipelinesLoadResult> RefreshPipelinesAsync(
+            int page,
+            int pageSize,
+            string? search = null,
+            string? branch = null,
+            PipelineStatus? status = null,
+            CancellationToken ct = default)
+        {
+            RefreshRequests++;
+            return GetPipelinesAsync(page, pageSize, search, branch, status, ct);
         }
     }
 }

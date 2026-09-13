@@ -20,7 +20,7 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
     {
         _apiClient = apiClient;
         Pagination = new PaginationViewModel(PageSize, page => LoadPageAsync(page));
-        RefreshCommand = new AsyncRelayCommand(() => LoadAsync());
+        RefreshCommand = new AsyncRelayCommand(() => RefreshAsync());
         ApplyFiltersCommand = new AsyncRelayCommand(ApplyFiltersAsync);
         ClearFiltersCommand = new AsyncRelayCommand(ClearFiltersAsync);
         CloseHistoryCommand = new RelayCommand(() => SelectedPipeline = null);
@@ -70,7 +70,7 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
     }
 
     public Task ActivateAsync(CancellationToken ct = default) =>
-        LoadAsync(ct);
+        RefreshAsync(ct);
 
     private bool _isLoading;
     public bool IsLoading
@@ -86,22 +86,35 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
         private set => SetField(ref _statusMessage, value);
     }
 
-    public Task LoadAsync(CancellationToken ct = default) => LoadPageAsync(_currentPage, ct);
+    public Task LoadAsync(CancellationToken ct = default) => LoadPageAsync(_currentPage, ct: ct);
 
-    private async Task LoadPageAsync(int page, CancellationToken ct = default)
+    private async Task LoadPageAsync(
+        int page,
+        bool refreshFromGitHub = false,
+        CancellationToken ct = default)
     {
         IsLoading = true;
-        StatusMessage = "Загрузка pipelines...";
+        StatusMessage = refreshFromGitHub
+            ? "Обновление пайплайнов..."
+            : "Загрузка пайплайнов...";
 
         try
         {
-            var result = await _apiClient.GetPipelinesAsync(
-                page,
-                PageSize,
-                SearchText,
-                BranchFilter,
-                SelectedStatus,
-                ct);
+            var result = refreshFromGitHub
+                ? await _apiClient.RefreshPipelinesAsync(
+                    page,
+                    PageSize,
+                    SearchText,
+                    BranchFilter,
+                    SelectedStatus,
+                    ct)
+                : await _apiClient.GetPipelinesAsync(
+                    page,
+                    PageSize,
+                    SearchText,
+                    BranchFilter,
+                    SelectedStatus,
+                    ct);
 
             if (!result.IsSuccess)
             {
@@ -118,7 +131,9 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
             _currentPage = page;
             _totalItems = result.TotalItems;
             Pagination.SetTotalItems(_totalItems, _currentPage);
-            StatusMessage = string.Empty;
+            StatusMessage = _totalItems == 0
+                ? "По выбранным фильтрам запусков нет"
+                : $"Найдено пайплайнов: {_totalItems}";
         }
         finally
         {
@@ -127,6 +142,12 @@ public class PipelinesListViewModel : INotifyPropertyChanged, IActivatableViewMo
     }
 
     private void ShowHistory(PipelineViewModel pipeline) => SelectedPipeline = pipeline;
+
+    private Task RefreshAsync(CancellationToken ct = default)
+    {
+        _currentPage = 1;
+        return LoadPageAsync(_currentPage, refreshFromGitHub: true, ct: ct);
+    }
 
     private Task ApplyFiltersAsync()
     {

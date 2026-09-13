@@ -6,7 +6,7 @@ namespace DevFlowMonitor.Wpf.ViewModel
 {
     public class StatusCardViewModel : INotifyPropertyChanged
     {
-        
+
         public string Title { get; set; } = string.Empty;
         public StatusCardType Type { get; init; }
 

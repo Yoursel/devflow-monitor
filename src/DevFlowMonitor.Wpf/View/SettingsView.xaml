@@ -7,191 +7,221 @@
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewModel:SettingsViewModel}">
     <Grid Style="{StaticResource PageRoot}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0 0 4 16">
+                <TextBlock Style="{StaticResource PageTitle}" Text="Настройки"/>
 
-        <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Настройки</TextBlock>
-
-        <Border Grid.Row="1"
-                CornerRadius="8"
-                Background="{StaticResource CardBackground}"
-                BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1.5"
-                Style="{StaticResource SectionContent}">
-            <StackPanel>
-                <Border Style="{StaticResource FormSectionHeader}">
-                    <TextBlock Foreground="{StaticResource TableHeaderForeground}"
-                               FontSize="10">API</TextBlock>
-                </Border>
-
-                <StackPanel Margin="24">
-                    <TextBlock Style="{StaticResource FormFieldLabel}">URL API</TextBlock>
-                    <Border Style="{StaticResource FormInputBorder}">
-                        <TextBox Style="{StaticResource FormInput}"
-                                 Text="{Binding ApiUrl, UpdateSourceTrigger=PropertyChanged}"/>
-                    </Border>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="2"
-                CornerRadius="8"
-                Background="{StaticResource CardBackground}"
-                BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1.5"
-                Style="{StaticResource SectionContent}">
-            <StackPanel>
-                <Border Style="{StaticResource FormSectionHeader}">
-                    <TextBlock Foreground="{StaticResource TableHeaderForeground}"
-                               FontSize="10">GITHUB ACTIONS</TextBlock>
-                </Border>
-
-                <StackPanel Margin="24">
-                    <TextBlock Style="{StaticResource FormFieldLabel}">GitHub профиль или организация</TextBlock>
-                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
-                        <TextBox Style="{StaticResource FormInput}"
-                                 Text="{Binding GitHubProfile, UpdateSourceTrigger=PropertyChanged}"/>
-                    </Border>
-                    <TextBlock Style="{StaticResource FormFieldLabel}">GitHub token</TextBlock>
-                    <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
-                        <PasswordBox Style="{StaticResource FormPasswordBox}"
-                                     PasswordChanged="PasswordField_PasswordChanged"
-                                     x:Name="PasswordField"/>
-                    </Border>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Style="{StaticResource SecondaryButton}"
-                                Command="{Binding CheckConnectionCommand}">
-                            <Button.Content>
-                                <TextBlock>Проверить подключение</TextBlock>
-                            </Button.Content>
-                        </Button>
-
-                        <Button Style="{StaticResource MainButton}"
-                                Command="{Binding SaveCommand}"
-                                Width="120">
-                            <Button.Content>
-                                <TextBlock HorizontalAlignment="Center">Сохранить</TextBlock>
-                            </Button.Content>
-                        </Button>
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="3"
-                CornerRadius="8"
-                Background="{StaticResource CardBackground}"
-                BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1.5"
-                Style="{StaticResource SectionContent}">
-            <StackPanel>
-                <Border Style="{StaticResource FormSectionHeader}">
-                    <TextBlock Foreground="{StaticResource TableHeaderForeground}"
-                               FontSize="10">УВЕДОМЛЕНИЯ</TextBlock>
-                </Border>
-                <Grid Margin="24" Background="Transparent">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <Border CornerRadius="8"
+                        Background="{StaticResource CardBackground}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1.5"
+                        Style="{StaticResource SectionContent}">
                     <StackPanel>
-                        <CheckBox Content="Фоновый мониторинг и Windows-уведомления"
-                                  Style="{StaticResource FormCheckBox}"
-                                  IsChecked="{Binding NotificationsEnabled}"
-                                  Margin="0 0 0 14"/>
-                        <CheckBox Content="Уведомлять об успешных запусках"
-                                  Style="{StaticResource FormCheckBox}"
-                                  IsChecked="{Binding NotifyOnSuccess}"/>
+                        <Border Style="{StaticResource FormSectionHeader}">
+                            <TextBlock Foreground="{StaticResource TableHeaderForeground}" FontSize="10" Text="API"/>
+                        </Border>
+                        <StackPanel Margin="24">
+                            <TextBlock Style="{StaticResource FormFieldLabel}" Text="URL API"/>
+                            <Border Style="{StaticResource FormInputBorder}">
+                                <TextBox Style="{StaticResource FormInput}"
+                                         Text="{Binding ApiUrl, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="24 0 0 0">
-                        <TextBlock Style="{StaticResource FormFieldLabel}">Интервал проверки, секунд</TextBlock>
-                        <ComboBox Height="35" Style="{StaticResource FormComboBox}"
-                                  ItemsSource="{Binding AvailablePollingIntervals}"
-                                  SelectedItem="{Binding PollingIntervalSeconds}"/>
-                        <Button Style="{StaticResource SecondaryButton}"
-                                Margin="0 14 0 0"
-                                Command="{Binding TestNotificationCommand}"
-                                Content="Тестовое уведомление"/>
+                </Border>
+
+                <Border CornerRadius="8"
+                        Background="{StaticResource CardBackground}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1.5"
+                        Style="{StaticResource SectionContent}">
+                    <StackPanel>
+                        <Border Style="{StaticResource FormSectionHeader}">
+                            <TextBlock Foreground="{StaticResource TableHeaderForeground}" FontSize="10" Text="GITHUB ACTIONS"/>
+                        </Border>
+                        <StackPanel Margin="24">
+                            <TextBlock Style="{StaticResource FormFieldLabel}" Text="Подключённые аккаунты"/>
+                            <ComboBox Height="35"
+                                      Margin="0 0 0 14"
+                                      Style="{StaticResource FormComboBox}"
+                                      ItemsSource="{Binding GitHubAccounts}"
+                                      SelectedItem="{Binding SelectedGitHubAccount}"
+                                      DisplayMemberPath="Owner"/>
+                            <TextBlock Margin="0 0 0 14"
+                                       Foreground="{StaticResource TotalAccentTextBrush}"
+                                       TextWrapping="Wrap"
+                                       Text="Подключённых аккаунтов пока нет. Заполните профиль и token, затем нажмите «Добавить и синхронизировать».">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasRegisteredGitHubAccount}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Style="{StaticResource FormFieldLabel}" Text="GitHub профиль или организация"/>
+                            <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                                <TextBox Style="{StaticResource FormInput}"
+                                         Text="{Binding GitHubProfile, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Border>
+                            <TextBlock Style="{StaticResource FormFieldLabel}" Text="GitHub token"/>
+                            <Border Style="{StaticResource FormInputBorder}" Margin="0 0 0 20">
+                                <PasswordBox x:Name="PasswordField"
+                                             Style="{StaticResource FormPasswordBox}"
+                                             PasswordChanged="PasswordField_PasswordChanged"/>
+                            </Border>
+                            <WrapPanel>
+                                <Button Width="190"
+                                        Margin="0 0 10 10"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding CheckConnectionCommand}"
+                                        Content="Проверить подключение"/>
+                                <Button Width="250"
+                                        Margin="0 0 10 10"
+                                        Style="{StaticResource MainButton}"
+                                        Command="{Binding AddAccountCommand}"
+                                        Content="Добавить и синхронизировать"/>
+                                <Button Width="180"
+                                        Margin="0 0 10 10"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding SynchronizeAccountCommand}"
+                                        ToolTip="Сначала добавьте GitHub-аккаунт"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        Content="Синхронизировать"/>
+                                <Button Width="120"
+                                        Margin="0 0 10 10"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding DeleteAccountCommand}"
+                                        ToolTip="Сначала добавьте GitHub-аккаунт"
+                                        ToolTipService.ShowOnDisabled="True"
+                                        Content="Удалить"/>
+                                <Button Width="120"
+                                        Margin="0 0 0 10"
+                                        Style="{StaticResource MainButton}"
+                                        Command="{Binding SaveCommand}"
+                                        Content="Сохранить"/>
+                            </WrapPanel>
+                            <Border Margin="0 2 0 0"
+                                    HorizontalAlignment="Left"
+                                    MaxWidth="760">
+                                <Border.Style>
+                                    <Style TargetType="Border" BasedOn="{StaticResource StatusBanner}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="14" Height="14" VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource MutedForeground}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ConnectionStatus}" Value="Testing">
+                                                        <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
+                                                        <Setter Property="Fill" Value="{StaticResource SuccessAccentBlockBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
+                                                        <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
+                                                        <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
+                                                        <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Margin="8 0 0 0"
+                                               MaxWidth="700"
+                                               VerticalAlignment="Center"
+                                               FontSize="13"
+                                               Text="{Binding StatusMessage}"
+                                               TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource MutedForeground}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
+                                                        <Setter Property="Foreground" Value="{StaticResource SuccessAccentTextBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
+                                                        <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
+                                                        <Setter Property="Foreground" Value="{StaticResource TotalAccentTextBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
+                                                        <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
-                </Grid>
+                </Border>
+
+                <Border CornerRadius="8"
+                        Background="{StaticResource CardBackground}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1.5"
+                        Style="{StaticResource SectionContent}">
+                    <StackPanel>
+                        <Border Style="{StaticResource FormSectionHeader}">
+                            <TextBlock Foreground="{StaticResource TableHeaderForeground}" FontSize="10" Text="УВЕДОМЛЕНИЯ"/>
+                        </Border>
+                        <WrapPanel Margin="24">
+                            <StackPanel Width="430" Margin="0 0 24 12">
+                                <CheckBox Content="Фоновый мониторинг и Windows-уведомления"
+                                          Style="{StaticResource FormCheckBox}"
+                                          IsChecked="{Binding NotificationsEnabled}"
+                                          Margin="0 0 0 14"/>
+                                <CheckBox Content="Уведомлять об успешных запусках"
+                                          Style="{StaticResource FormCheckBox}"
+                                          IsChecked="{Binding NotifyOnSuccess}"/>
+                            </StackPanel>
+                            <StackPanel Width="300" Margin="0 0 0 12">
+                                <TextBlock Style="{StaticResource FormFieldLabel}" Text="Интервал проверки, секунд"/>
+                                <ComboBox Height="35"
+                                          Style="{StaticResource FormComboBox}"
+                                          ItemsSource="{Binding AvailablePollingIntervals}"
+                                          SelectedItem="{Binding PollingIntervalSeconds}"/>
+                                <Button Margin="0 14 0 0"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding TestNotificationCommand}"
+                                        Content="Тестовое уведомление"/>
+                                <TextBlock Margin="0 8 0 0"
+                                           Foreground="{StaticResource MutedForeground}"
+                                           FontSize="12"
+                                           Text="{Binding NotificationStatusMessage}"
+                                           TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding NotificationStatusMessage}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
-        </Border>
-
-        <Border Grid.Row="4"
-                CornerRadius="8"
-                Background="#F8F3E8"
-                BorderBrush="{StaticResource CardBorderBrush}"
-                BorderThickness="1.5"
-                Padding="16"
-                HorizontalAlignment="Left">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding StatusMessage}" Value="">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
-
-            <StackPanel Orientation="Horizontal">
-                <Ellipse Width="14" Height="14"
-                         VerticalAlignment="Center">
-                    <Ellipse.Style>
-                        <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="{StaticResource MutedForeground}"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Testing">
-                                    <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
-                                    <Setter Property="Fill" Value="{StaticResource SuccessAccentBlockBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
-                                    <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
-                                    <Setter Property="Fill" Value="{StaticResource TotalAccentBlockBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
-                                    <Setter Property="Fill" Value="{StaticResource FailedAccentBlockBrush}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Ellipse.Style>
-                </Ellipse>
-
-                <TextBlock VerticalAlignment="Center"
-                           FontSize="13"
-                           Margin="8,0,0,0"
-                           Text="{Binding StatusMessage}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{StaticResource MutedForeground}"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Connected">
-                                    <Setter Property="Foreground" Value="{StaticResource SuccessAccentTextBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ConnectionStatus}" Value="Failed">
-                                    <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ApiStatus}" Value="Degraded">
-                                    <Setter Property="Foreground" Value="{StaticResource TotalAccentTextBrush}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ApiStatus}" Value="Unhealthy">
-                                    <Setter Property="Foreground" Value="{StaticResource FailedAccentTextBrush}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-            </StackPanel>
-        </Border>
+        </ScrollViewer>
     </Grid>
 </UserControl>

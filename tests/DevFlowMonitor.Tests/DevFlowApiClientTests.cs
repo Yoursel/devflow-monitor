@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using DevFlowMonitor.Contracts;
+using DevFlowMonitor.Contracts.Security;
 using DevFlowMonitor.Wpf.Model;
 using DevFlowMonitor.Wpf.Service;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -32,6 +33,7 @@ public class DevFlowApiClientTests
         Assert.Contains("Yoursel", result.Message);
         Assert.Equal(HttpMethod.Post, request.Method);
         Assert.Equal(new Uri("http://localhost:5268/api/github/check-connection"), request.RequestUri);
+        Assert.Equal("test-local-api-key", request.Headers.GetValues(LocalApiAuthentication.HeaderName).Single());
         Assert.Equal("Yoursel", body.ProfileOrOwner);
         Assert.Equal("github_pat_test", body.Token);
     }
@@ -64,7 +66,23 @@ public class DevFlowApiClientTests
             "github_pat_test");
 
         Assert.Equal(ConnectionStatus.Failed, result.ConnectionStatus);
-        Assert.Equal("Для удалённого API необходимо использовать HTTPS", result.Message);
+        Assert.Equal("DevFlow Monitor поддерживает только локальный API", result.Message);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
+    public async Task CheckConnectionAsync_RejectsHttpsForRemoteApi()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage());
+        var client = CreateClient(handler);
+
+        var result = await client.CheckConnectionAsync(
+            "https://devflow.example.com",
+            "Yoursel",
+            "github_pat_test");
+
+        Assert.Equal(ConnectionStatus.Failed, result.ConnectionStatus);
+        Assert.Equal("DevFlow Monitor поддерживает только локальный API", result.Message);
         Assert.Empty(handler.Requests);
     }
 
@@ -137,6 +155,70 @@ public class DevFlowApiClientTests
     }
 
     [Fact]
+    public async Task GetPipelinesAsync_WithActiveAccount_ReadsStoredHistory()
+    {
+        var accountId = Guid.NewGuid();
+        var response = new PagedResponse<PipelineSummaryResponse>([], 1, 5, 0);
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == $"/api/github/accounts/{accountId}/pipelines"
+                ? JsonResponse(response)
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var settings = Settings();
+        settings.ActiveGitHubAccountId = accountId;
+        var client = CreateClient(handler, settings);
+
+        var result = await client.GetPipelinesAsync(
+            1,
+            5,
+            search: "build & test",
+            branch: "feature/demo",
+            status: PipelineStatus.Failed);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Contains("search=build%20%26%20test", request.RequestUri!.Query);
+        Assert.Contains("branch=feature%2Fdemo", request.RequestUri.Query);
+        Assert.Contains("status=Failed", request.RequestUri.Query);
+    }
+
+    [Fact]
+    public async Task RefreshPipelinesAsync_SynchronizesActiveAccountBeforeReadingStoredHistory()
+    {
+        var accountId = Guid.NewGuid();
+        var pipelines = new PagedResponse<PipelineSummaryResponse>([], 1, 5, 0);
+        var synchronizedAt = DateTimeOffset.Parse("2026-09-09T12:00:00Z");
+        var handler = new StubHttpMessageHandler(request => request.RequestUri!.AbsolutePath switch
+        {
+            var path when path == $"/api/github/accounts/{accountId}/sync" => JsonResponse(
+                new GitHubSyncResponse(accountId, 1, 1, 1, 1, 1, 1, synchronizedAt, [])),
+            var path when path == $"/api/github/accounts/{accountId}/pipelines" => JsonResponse(pipelines),
+            _ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        });
+        var settings = Settings();
+        settings.ActiveGitHubAccountId = accountId;
+        settings.GitHubAccounts.Add(new GitHubAccountSettings
+        {
+            Id = accountId,
+            Owner = "Yoursel",
+            Token = "active_account_token"
+        });
+        var client = CreateClient(handler, settings);
+
+        var result = await client.RefreshPipelinesAsync(1, 5, status: PipelineStatus.Running);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal($"/api/github/accounts/{accountId}/sync", handler.Requests[0].RequestUri!.AbsolutePath);
+        Assert.Equal($"/api/github/accounts/{accountId}/pipelines", handler.Requests[1].RequestUri!.AbsolutePath);
+        Assert.Contains("status=Running", handler.Requests[1].RequestUri!.Query);
+
+        var syncRequest = await ReadJsonBodyAsync<GitHubAccountSyncRequest>(handler.Requests[0]);
+        Assert.Equal("active_account_token", syncRequest.Token);
+        Assert.False(syncRequest.FullHistory);
+    }
+
+    [Fact]
     public async Task GetDashboardAsync_PostsRequestToConfiguredApi()
     {
         var summary = new DashboardSummaryResponse(
@@ -172,6 +254,66 @@ public class DevFlowApiClientTests
         Assert.Equal(new Uri("http://localhost:5268/api/github/dashboard"), request.RequestUri);
         Assert.Equal("Yoursel", body.ProfileOrOwner);
         Assert.Equal("github_pat_test", body.Token);
+    }
+
+    [Fact]
+    public async Task GetAnalyticsAsync_SendsPeriodAndScopeFilters()
+    {
+        var accountId = Guid.NewGuid();
+        var repositoryId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var from = DateTimeOffset.Parse("2026-09-01T00:00:00Z");
+        var to = DateTimeOffset.Parse("2026-10-01T00:00:00Z");
+        var metrics = new MetricsSummaryResponse(from, to, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, [], []);
+        var response = new AnalyticsResponse(from, to, metrics, [], [], []);
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == $"/api/github/accounts/{accountId}/analytics"
+                ? JsonResponse(response)
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var settings = Settings();
+        settings.ActiveGitHubAccountId = accountId;
+        var client = CreateClient(handler, settings);
+
+        var result = await client.GetAnalyticsAsync(
+            from,
+            to,
+            repositoryId,
+            workflowId,
+            PipelineStatus.Failed,
+            true);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Contains($"repositoryId={repositoryId}", request.RequestUri!.Query);
+        Assert.Contains($"workflowId={workflowId}", request.RequestUri.Query);
+        Assert.Contains("status=Failed", request.RequestUri.Query);
+        Assert.Contains("allTime=true", request.RequestUri.Query);
+        Assert.Contains("from=2026-09-01T00%3A00%3A00", request.RequestUri.Query);
+    }
+
+    [Fact]
+    public async Task GetRunDetailsAsync_UsesActiveAccountAndStoredRunId()
+    {
+        var accountId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var response = new RunDetailsResponse(
+            runId, 1, 2, "owner/repo", "CI", "Build", "main", PipelineStatus.Success,
+            "success", "push", null, null, "owner", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
+            null, []);
+        var handler = new StubHttpMessageHandler(request =>
+            request.RequestUri!.AbsolutePath == $"/api/github/accounts/{accountId}/runs/{runId}"
+                ? JsonResponse(response)
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var settings = Settings();
+        settings.ActiveGitHubAccountId = accountId;
+        var client = CreateClient(handler, settings);
+
+        var result = await client.GetRunDetailsAsync(runId);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(runId, result.Value!.Id);
+        Assert.Equal(HttpMethod.Get, Assert.Single(handler.Requests).Method);
     }
 
     private static AppSettings Settings() => new()
@@ -214,7 +356,13 @@ public class DevFlowApiClientTests
         return new DevFlowApiClient(
             httpClient,
             new StubSettingsService(settings),
+            new StubLocalApiKeyProvider(),
             NullLogger<DevFlowApiClient>.Instance);
+    }
+
+    private sealed class StubLocalApiKeyProvider : ILocalApiKeyProvider
+    {
+        public string GetApiKey() => "test-local-api-key";
     }
 
     private sealed class StubHttpMessageHandler(
@@ -222,12 +370,24 @@ public class DevFlowApiClientTests
     {
         public List<HttpRequestMessage> Requests { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(
+        protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            Requests.Add(request);
-            return Task.FromResult(responseFactory(request));
+            var capturedRequest = new HttpRequestMessage(request.Method, request.RequestUri);
+            foreach (var header in request.Headers)
+                capturedRequest.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            if (request.Content is not null)
+            {
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
+                capturedRequest.Content = new StringContent(
+                    body,
+                    Encoding.UTF8,
+                    request.Content.Headers.ContentType?.MediaType ?? "application/json");
+            }
+
+            Requests.Add(capturedRequest);
+            return responseFactory(request);
         }
     }
 

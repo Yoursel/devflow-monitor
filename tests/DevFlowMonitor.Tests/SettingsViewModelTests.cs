@@ -1,4 +1,5 @@
 using DevFlowMonitor.Contracts;
+using DevFlowMonitor.Wpf.Command;
 using DevFlowMonitor.Wpf.Model;
 using DevFlowMonitor.Wpf.Notification;
 using DevFlowMonitor.Wpf.Service;
@@ -25,7 +26,7 @@ public class SettingsViewModelTests
         viewModel.GitHubProfile = "Yoursel";
         viewModel.GitHubToken = "github_pat_test";
 
-        await viewModel.CheckConnection();
+        await viewModel.CheckConnectionAsync();
 
         Assert.Equal(ConnectionStatus.Connected, viewModel.ConnectionStatus);
         Assert.Equal(ApiHealthStatus.Healthy, viewModel.ApiStatus);
@@ -46,7 +47,7 @@ public class SettingsViewModelTests
         };
         var viewModel = CreateViewModel(apiClient);
 
-        await viewModel.CheckConnection();
+        await viewModel.CheckConnectionAsync();
 
         Assert.Equal(ConnectionStatus.Failed, viewModel.ConnectionStatus);
         Assert.Equal("URL API не задан", viewModel.StatusMessage);
@@ -64,7 +65,7 @@ public class SettingsViewModelTests
                 "1.2.3")
         });
         viewModel.ApiUrl = "http://localhost:5268";
-        await viewModel.CheckConnection();
+        await viewModel.CheckConnectionAsync();
 
         viewModel.GitHubToken = "new-token";
 
@@ -128,7 +129,69 @@ public class SettingsViewModelTests
 
         Assert.NotNull(notificationService.LastNotification);
         Assert.Equal(PipelineStatus.Success, notificationService.LastNotification.Status);
-        Assert.Equal("Тестовое уведомление отправлено", viewModel.StatusMessage);
+        Assert.Equal("Тестовое уведомление отправлено", viewModel.NotificationStatusMessage);
+        Assert.Empty(viewModel.StatusMessage);
+    }
+
+    [Fact]
+    public async Task AddAccountCommand_PersistsAccountAndSynchronizesHistory()
+    {
+        var accountId = Guid.NewGuid();
+        var synchronizedAt = DateTimeOffset.Parse("2026-09-08T12:00:00Z");
+        var apiClient = new StubApiClient
+        {
+            AddAccountResult = ApiOperationResult<GitHubAccountResponse>.Success(
+                new GitHubAccountResponse(accountId, "Yoursel", 2, synchronizedAt.AddMinutes(-1), null)),
+            SyncResult = ApiOperationResult<GitHubSyncResponse>.Success(
+                new GitHubSyncResponse(accountId, 2, 3, 10, 11, 12, 30, synchronizedAt, []))
+        };
+        var settingsService = new StubSettingsService();
+        var viewModel = CreateViewModel(apiClient, settingsService);
+        viewModel.ApiUrl = "http://localhost:5268";
+        viewModel.GitHubProfile = "Yoursel";
+        viewModel.GitHubToken = "github_pat_test";
+
+        await ((AsyncRelayCommand)viewModel.AddAccountCommand).ExecuteAsync();
+
+        var account = Assert.Single(viewModel.GitHubAccounts);
+        Assert.Equal(accountId, account.Id);
+        Assert.Equal("Yoursel", account.Owner);
+        Assert.Equal("github_pat_test", account.Token);
+        Assert.Equal(synchronizedAt, account.LastSynchronizedAt);
+        Assert.Equal(accountId, settingsService.SavedSettings!.ActiveGitHubAccountId);
+        Assert.Contains("10 запусков", viewModel.StatusMessage);
+        Assert.True(viewModel.SynchronizeAccountCommand.CanExecute(null));
+        Assert.True(viewModel.DeleteAccountCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void LegacyPlaceholderAccount_IsNotPresentedAsRegisteredAccount()
+    {
+        var settingsService = new StubSettingsService(new AppSettings
+        {
+            GitHubProfile = "Yoursel",
+            GitHubToken = "secret",
+            ActiveGitHubAccountId = Guid.Empty,
+            GitHubAccounts =
+            [
+                new GitHubAccountSettings
+                {
+                    Id = Guid.Empty,
+                    Owner = "Yoursel",
+                    Token = "secret"
+                }
+            ]
+        });
+        var viewModel = CreateViewModel(new StubApiClient(), settingsService);
+
+        Assert.Empty(viewModel.GitHubAccounts);
+        Assert.Null(viewModel.SelectedGitHubAccount);
+        Assert.False(viewModel.HasRegisteredGitHubAccount);
+        Assert.False(viewModel.SynchronizeAccountCommand.CanExecute(null));
+        Assert.False(viewModel.DeleteAccountCommand.CanExecute(null));
+        Assert.True(viewModel.CheckConnectionCommand.CanExecute(null));
+        Assert.True(viewModel.SaveCommand.CanExecute(null));
+        Assert.True(viewModel.TestNotificationCommand.CanExecute(null));
     }
 
     private static SettingsViewModel CreateViewModel(
@@ -150,6 +213,10 @@ public class SettingsViewModelTests
         public string? LastApiUrl { get; private set; }
         public string? LastGitHubProfile { get; private set; }
         public string? LastGitHubToken { get; private set; }
+        public ApiOperationResult<GitHubAccountResponse> AddAccountResult { get; init; } =
+            ApiOperationResult<GitHubAccountResponse>.Failed("Not configured");
+        public ApiOperationResult<GitHubSyncResponse> SyncResult { get; init; } =
+            ApiOperationResult<GitHubSyncResponse>.Failed("Not configured");
 
         public Task<ConnectionCheckResult> CheckConnectionAsync(
             string apiUrl,
@@ -162,6 +229,37 @@ public class SettingsViewModelTests
             LastGitHubToken = gitHubToken;
             return Task.FromResult(Result);
         }
+
+        public Task<ApiOperationResult<GitHubAccountResponse>> AddGitHubAccountAsync(
+            string apiUrl, string gitHubProfile, string gitHubToken, CancellationToken ct = default) =>
+            Task.FromResult(AddAccountResult);
+
+        public Task<ApiOperationResult<GitHubSyncResponse>> SynchronizeGitHubAccountAsync(
+            string apiUrl, Guid accountId, string gitHubToken, bool fullHistory = true, CancellationToken ct = default) =>
+            Task.FromResult(SyncResult);
+
+        public Task<ApiOperationResult<bool>> DeleteGitHubAccountAsync(
+            string apiUrl, Guid accountId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<bool>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<MetricsSummaryResponse>> GetMetricsAsync(CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<MetricsSummaryResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<IReadOnlyList<RepositoryResponse>>> GetRepositoriesAsync(CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<IReadOnlyList<RepositoryResponse>>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<IReadOnlyList<WorkflowResponse>>> GetWorkflowsAsync(
+            Guid repositoryId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<IReadOnlyList<WorkflowResponse>>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<AnalyticsResponse>> GetAnalyticsAsync(
+            DateTimeOffset periodStart, DateTimeOffset periodEnd, Guid? repositoryId = null,
+            Guid? workflowId = null, PipelineStatus? status = null, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<AnalyticsResponse>.Failed("Not configured"));
+
+        public Task<ApiOperationResult<RunDetailsResponse>> GetRunDetailsAsync(
+            Guid runId, CancellationToken ct = default) =>
+            Task.FromResult(ApiOperationResult<RunDetailsResponse>.Failed("Not configured"));
 
         public Task<DashboardLoadResult> GetDashboardAsync(CancellationToken ct = default) =>
             Task.FromResult(DashboardLoadResult.Failed("Not configured"));
@@ -176,11 +274,11 @@ public class SettingsViewModelTests
             Task.FromResult(PipelinesLoadResult.Failed("Not configured"));
     }
 
-    private sealed class StubSettingsService : IAppSettingsService
+    private sealed class StubSettingsService(AppSettings? initialSettings = null) : IAppSettingsService
     {
         public AppSettings? SavedSettings { get; private set; }
 
-        public AppSettings Load() => new();
+        public AppSettings Load() => initialSettings ?? new AppSettings();
 
         public void Save(AppSettings settings)
         {

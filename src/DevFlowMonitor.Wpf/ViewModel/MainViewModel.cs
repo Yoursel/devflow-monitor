@@ -18,6 +18,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
         NavigateToDashboardCommand = new RelayCommand(() => _navigationService.NavigateTo<DashboardViewModel>());
         NavigateToPipelinesCommand = new RelayCommand(() => _navigationService.NavigateTo<PipelinesListViewModel>());
+        NavigateToAnalyticsCommand = new RelayCommand(() => _navigationService.NavigateTo<AnalyticsViewModel>());
         NavigateToSettingsCommand = new RelayCommand(() => _navigationService.NavigateTo<SettingsViewModel>());
 
         _navigationService.NavigateTo<DashboardViewModel>();
@@ -25,12 +26,14 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public ICommand NavigateToDashboardCommand { get; }
     public ICommand NavigateToPipelinesCommand { get; }
+    public ICommand NavigateToAnalyticsCommand { get; }
     public ICommand NavigateToSettingsCommand { get; }
 
     public object? CurrentViewModel => _navigationService.CurrentViewModel;
 
     public bool IsDashboardActive => _navigationService.CurrentViewModel is DashboardViewModel;
     public bool IsPipelinesActive => _navigationService.CurrentViewModel is PipelinesListViewModel;
+    public bool IsAnalyticsActive => _navigationService.CurrentViewModel is AnalyticsViewModel;
     public bool IsSettingsActive => _navigationService.CurrentViewModel is SettingsViewModel;
 
     private void OnNavigationPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -41,6 +44,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         OnPropertyChanged(nameof(CurrentViewModel));
         OnPropertyChanged(nameof(IsDashboardActive));
         OnPropertyChanged(nameof(IsPipelinesActive));
+        OnPropertyChanged(nameof(IsAnalyticsActive));
         OnPropertyChanged(nameof(IsSettingsActive));
     }
 

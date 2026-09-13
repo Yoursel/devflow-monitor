@@ -1,6 +1,16 @@
 using DevFlowMonitor.Api;
+using DevFlowMonitor.Api.Accounts;
+using DevFlowMonitor.Api.Analytics;
+using DevFlowMonitor.Api.Data;
 using DevFlowMonitor.Api.GitHub;
+using DevFlowMonitor.Api.Metrics;
+using DevFlowMonitor.Api.Pipelines;
+using DevFlowMonitor.Api.Security;
 using DevFlowMonitor.Contracts;
+using DevFlowMonitor.Contracts.Security;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +21,31 @@ builder.Logging.AddDebug();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddHttpClient<IGitHubActionsClient, GitHubActionsClient>(client =>
+builder.Services.AddSingleton<ILocalApiKeyProvider, LocalApiKeyProvider>();
+builder.Services
+    .AddAuthentication(LocalApiAuthentication.Scheme)
+    .AddScheme<AuthenticationSchemeOptions, LocalApiAuthenticationHandler>(
+        LocalApiAuthentication.Scheme,
+        _ => { });
+builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(
+    new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
+builder.Services.Configure<GitHubSyncOptions>(
+    builder.Configuration.GetSection(GitHubSyncOptions.SectionName));
+builder.Services.AddDbContext<DevFlowDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DevFlow")));
+builder.Services.AddHttpClient<IGitHubApiClient, GitHubApiClient>(client =>
 {
     client.BaseAddress = new Uri("https://api.github.com/");
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
+builder.Services.AddScoped<IGitHubActionsClient, GitHubActionsClient>();
+builder.Services.AddScoped<IGitHubAccountService, GitHubAccountService>();
+builder.Services.AddScoped<IGitHubSynchronizationService, GitHubSynchronizationService>();
+builder.Services.AddScoped<IMetricsService, MetricsService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IStoredPipelineService, StoredPipelineService>();
 
 var app = builder.Build();
 
@@ -24,19 +55,22 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<DevFlowDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 var pipelines = PipelineDemoData.Pipelines;
-
-static IResult ToApiResult<T>(GitHubActionsResult<T> result) =>
-    result.IsSuccess
-        ? Results.Ok(result.Value)
-        : Results.Text(result.ErrorMessage, statusCode: StatusCodes.Status400BadRequest);
 
 app.MapGet("/api/health", () => new HealthResponse(
     Status: ApiHealthStatus.Healthy,
     Version: typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0",
-    Timestamp: DateTimeOffset.UtcNow));
+    Timestamp: DateTimeOffset.UtcNow)).AllowAnonymous();
 
 app.MapGet("/api/dashboard", () => new DashboardSummaryResponse(
     TotalRuns: pipelines.Sum(pipeline => pipeline.SuccessfulRuns + pipeline.FailedRuns),
@@ -73,7 +107,7 @@ app.MapPost(
         GitHubConnectionRequest request,
         IGitHubActionsClient gitHub,
         CancellationToken ct) =>
-        ToApiResult(await gitHub.CheckConnectionAsync(request, ct)));
+        (await gitHub.CheckConnectionAsync(request, ct)).ToHttpResult());
 
 app.MapPost(
     "/api/github/dashboard",
@@ -81,7 +115,7 @@ app.MapPost(
         GitHubConnectionRequest request,
         IGitHubActionsClient gitHub,
         CancellationToken ct) =>
-        ToApiResult(await gitHub.GetDashboardAsync(request, ct)));
+        (await gitHub.GetDashboardAsync(request, ct)).ToHttpResult());
 
 app.MapPost(
     "/api/github/pipelines",
@@ -89,6 +123,8 @@ app.MapPost(
         GitHubPipelinesRequest request,
         IGitHubActionsClient gitHub,
         CancellationToken ct) =>
-        ToApiResult(await gitHub.GetPipelinesAsync(request, ct)));
+        (await gitHub.GetPipelinesAsync(request, ct)).ToHttpResult());
+
+app.MapGitHubAccountEndpoints();
 
 app.Run();

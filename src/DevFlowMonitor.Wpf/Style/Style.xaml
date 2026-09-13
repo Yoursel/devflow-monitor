@@ -62,6 +62,13 @@
         <Setter Property="Margin" Value="0 0 0 20" />
     </Style>
 
+    <Style x:Key="PageSubtitle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{StaticResource MutedForeground}" />
+        <Setter Property="Margin" Value="0 6 0 0" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
     <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Margin" Value="0 0 0 20" />
@@ -77,42 +84,129 @@
 
     <Style x:Key="MainButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="#A2EFB7" />
-        <Setter Property="Foreground" Value="#1A4A2E"></Setter>
+        <Setter Property="Foreground" Value="#1A4A2E" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
+                    <Border x:Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="4">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center" />
+                        <Grid Background="Transparent">
+                            <ContentPresenter x:Name="ButtonContent"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                            <TextBlock x:Name="BusyContent"
+                                       Visibility="Collapsed"
+                                       Margin="5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource MainFont}"
+                                       Text="Подождите..." />
+                        </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.84" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.65" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource TableHeaderForeground}" />
+                            <Setter TargetName="ButtonBorder" Property="BorderThickness" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.48" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Command.IsExecuting, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                            <Setter TargetName="ButtonContent" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="BusyContent" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="Height" Value="35"></Setter>
-        <Setter Property="Margin" Value="0 0 10 0"></Setter>
+        <Setter Property="Height" Value="35" />
+        <Setter Property="Margin" Value="0 0 10 0" />
     </Style>
 
     <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="#F8F3E8" />
-        <Setter Property="Foreground" Value="#5C4A1E"></Setter>
+        <Setter Property="Foreground" Value="#5C4A1E" />
+        <Setter Property="BorderBrush" Value="#C8BFA8" />
+        <Setter Property="BorderThickness" Value="2" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border BorderBrush="#C8BFA8"
+                    <Border x:Name="ButtonBorder"
+                            BorderBrush="{TemplateBinding BorderBrush}"
                             Background="{TemplateBinding Background}"
-                            BorderThickness="2"
-                            Padding="5"
+                            BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="4">
-                        <ContentPresenter 
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"/>
+                        <Grid Background="Transparent">
+                            <ContentPresenter x:Name="ButtonContent"
+                                              Margin="5"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                            <TextBlock x:Name="BusyContent"
+                                       Visibility="Collapsed"
+                                       Margin="5"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource MainFont}"
+                                       Text="Подождите..." />
+                        </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource SuccessAccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.68" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="{StaticResource TableHeaderForeground}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.48" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding Command.IsExecuting, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                            <Setter TargetName="ButtonContent" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="BusyContent" Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="Height" Value="35"></Setter>
-        <Setter Property="Margin" Value="0 0 10 0"></Setter>
+        <Setter Property="Height" Value="35" />
+        <Setter Property="Margin" Value="0 0 10 0" />
+    </Style>
+
+    <Style x:Key="LoadingBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="3" />
+        <Setter Property="Foreground" Value="{StaticResource SuccessAccentBlockBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="IsIndeterminate" Value="True" />
+        <Setter Property="Visibility" Value="Collapsed" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                <Setter Property="Visibility" Value="Visible" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="StatusBanner" TargetType="Border">
+        <Setter Property="Background" Value="#F8F3E8" />
+        <Setter Property="BorderBrush" Value="#D4C9B8" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="12 9" />
+        <Setter Property="Margin" Value="0 0 0 16" />
     </Style>
 
     <Style x:Key="ScrollBarThumb" TargetType="Thumb">
@@ -149,7 +243,7 @@
 
     <Style x:Key="FormInputBorder" TargetType="Border">
         <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBackground}"/>
         <Setter Property="BorderBrush" Value="#D4C9B8"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
@@ -172,7 +266,7 @@
 
     <Style x:Key="FormComboBoxItem" TargetType="ComboBoxItem">
         <Setter Property="Padding" Value="12 8"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBackground}"/>
         <Setter Property="Foreground" Value="#2D2E27"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Style.Triggers>
@@ -188,7 +282,7 @@
     </Style>
 
     <Style x:Key="FormComboBox" TargetType="ComboBox">
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBackground}"/>
         <Setter Property="Foreground" Value="#2D2E27"/>
         <Setter Property="BorderBrush" Value="#D4C9B8"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -199,7 +293,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
                     <Grid Background="Transparent">
-                        <ToggleButton Background="{TemplateBinding Background}"
+                        <ToggleButton x:Name="DropDownToggle"
+                                      Background="{TemplateBinding Background}"
                                       BorderBrush="{TemplateBinding BorderBrush}"
                                       BorderThickness="{TemplateBinding BorderThickness}"
                                       Template="{StaticResource FormComboBoxToggleButton}"
@@ -221,7 +316,7 @@
                             <Border Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                     MaxHeight="240"
                                     Margin="0 3 0 0"
-                                    Background="White"
+                                    Background="{StaticResource CardBackground}"
                                     BorderBrush="#D4C9B8"
                                     BorderThickness="1"
                                     CornerRadius="6">
@@ -231,6 +326,147 @@
                             </Border>
                         </Popup>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="DropDownToggle" Property="BorderBrush" Value="{StaticResource SuccessAccentBlockBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="DropDownToggle" Property="BorderBrush" Value="{StaticResource TableHeaderForeground}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="FormDatePickerTextBox" TargetType="DatePickerTextBox">
+        <Setter Property="Padding" Value="11 0 4 0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePickerTextBox">
+                    <Border Background="{TemplateBinding Background}">
+                        <ScrollViewer x:Name="PART_ContentHost"
+                                      Margin="{TemplateBinding Padding}"
+                                      VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="FormDatePicker" TargetType="DatePicker">
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Background" Value="{StaticResource CardBackground}"/>
+        <Setter Property="Foreground" Value="#2D2E27"/>
+        <Setter Property="BorderBrush" Value="#D4C9B8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontFamily" Value="{StaticResource MainFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePicker">
+                    <Grid x:Name="PART_Root" Background="Transparent">
+                        <Border x:Name="PickerBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <Grid Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="36"/>
+                                </Grid.ColumnDefinitions>
+                                <DatePickerTextBox x:Name="PART_TextBox"
+                                                   Style="{StaticResource FormDatePickerTextBox}"
+                                                   FontFamily="{TemplateBinding FontFamily}"
+                                                   FontSize="{TemplateBinding FontSize}"
+                                                   Foreground="{TemplateBinding Foreground}"
+                                                   VerticalContentAlignment="Center"
+                                                   Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                <Button x:Name="PART_Button"
+                                        Grid.Column="1"
+                                        Margin="0"
+                                        Padding="0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Focusable="False"
+                                        Cursor="Hand"
+                                        ToolTip="Открыть календарь"
+                                        AutomationProperties.Name="Открыть календарь">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="CalendarButtonBackground"
+                                                    Margin="3"
+                                                    Background="Transparent"
+                                                    CornerRadius="4">
+                                                <Path Width="16"
+                                                      Height="16"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Data="M 2 4 L 14 4 L 14 14 L 2 14 Z M 2 7 L 14 7 M 5 2 L 5 5 M 11 2 L 11 5"
+                                                      Stretch="Uniform"
+                                                      Stroke="#5C4A1E"
+                                                      StrokeThickness="1.4"
+                                                      StrokeLineJoin="Round"
+                                                      StrokeStartLineCap="Round"
+                                                      StrokeEndLineCap="Round"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="CalendarButtonBackground" Property="Background" Value="{StaticResource SuccessAccentBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="CalendarButtonBackground" Property="Opacity" Value="0.65"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                               Placement="Bottom"
+                               PlacementTarget="{Binding ElementName=PickerBorder}"
+                               PopupAnimation="Fade"
+                               StaysOpen="False">
+                            <Border Margin="0 3 0 0"
+                                    Padding="6"
+                                    Background="{StaticResource CardBackground}"
+                                    BorderBrush="#D4C9B8"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <Calendar x:Name="PART_Calendar"
+                                          Background="{StaticResource CardBackground}"
+                                          BorderThickness="0"
+                                          DisplayDate="{Binding DisplayDate, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          SelectedDate="{Binding SelectedDate, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"/>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="PickerBorder" Property="BorderBrush" Value="{StaticResource SuccessAccentBlockBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="PickerBorder" Property="BorderBrush" Value="{StaticResource TableHeaderForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                        <Trigger Property="Validation.HasError" Value="True">
+                            <Setter TargetName="PickerBorder" Property="BorderBrush" Value="{StaticResource FailedAccentBlockBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -254,7 +490,7 @@
                                 Width="16" Height="16"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Center"
-                                Background="White"
+                                Background="{StaticResource CardBackground}"
                                 BorderBrush="#C8BFA8"
                                 BorderThickness="1"
                                 CornerRadius="2">
@@ -292,6 +528,22 @@
     <Style x:Key="FormFieldLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Margin" Value="0 0 0 6"/>
+    </Style>
+
+    <Style x:Key="AnalyticsMetricCard" TargetType="Border" BasedOn="{StaticResource FormInputBorder}">
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="0 0 8 8"/>
+        <Setter Property="MinHeight" Value="72"/>
+    </Style>
+
+    <Style x:Key="AnalyticsMetricContent" TargetType="StackPanel">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="AnalyticsMetricText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
     </Style>
 
     <Style x:Key="FormSectionHeader" TargetType="Border">

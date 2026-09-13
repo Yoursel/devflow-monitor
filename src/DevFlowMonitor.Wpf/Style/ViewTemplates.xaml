@@ -11,6 +11,10 @@
         <view:PipelinesView/>
     </DataTemplate>
 
+    <DataTemplate DataType="{x:Type viewModel:AnalyticsViewModel}">
+        <view:AnalyticsView/>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type viewModel:SettingsViewModel}">
         <view:SettingsView/>
     </DataTemplate>

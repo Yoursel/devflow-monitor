@@ -2,6 +2,7 @@ using DevFlowMonitor.Wpf.Service;
 using DevFlowMonitor.Wpf.Notification;
 using DevFlowMonitor.Wpf.View;
 using DevFlowMonitor.Wpf.ViewModel;
+using DevFlowMonitor.Contracts.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -31,11 +32,13 @@ public class Bootstrapper
             builder.AddDebug();
 #endif
         });
-        
+
         services.AddHttpClient<IDevFlowApiClient, DevFlowApiClient>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(10);
+            client.Timeout = TimeSpan.FromMinutes(2);
         });
+
+        services.AddSingleton<ILocalApiKeyProvider, LocalApiKeyProvider>();
 
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IAppSettingsService, AppSettingsService>();
@@ -43,7 +46,7 @@ public class Bootstrapper
         services.AddSingleton<PipelineNotificationDetector>();
         services.AddSingleton<IDesktopNotificationService, WindowsDesktopNotificationService>();
         services.AddHostedService<PipelineMonitoringService>();
-        
+
         RegisterViews(services);
         RegisterViewModels(services);
     }
@@ -58,6 +61,7 @@ public class Bootstrapper
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<DashboardViewModel>();
         services.AddSingleton<PipelinesListViewModel>();
+        services.AddSingleton<AnalyticsViewModel>();
         services.AddSingleton<SettingsViewModel>();
     }
 }

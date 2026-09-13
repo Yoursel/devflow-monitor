@@ -19,6 +19,8 @@ namespace DevFlowMonitor.Wpf.Command
             remove => CommandManager.RequerySuggested -= value;
         }
 
+        public bool IsExecuting => false;
+
         public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
         public void Execute(object? parameter) => _execute();
     }
@@ -39,6 +41,8 @@ namespace DevFlowMonitor.Wpf.Command
             add => CommandManager.RequerySuggested += value;
             remove => CommandManager.RequerySuggested -= value;
         }
+
+        public bool IsExecuting => false;
 
         public bool CanExecute(object? parameter) =>
             parameter is T value && (_canExecute?.Invoke(value) ?? true);

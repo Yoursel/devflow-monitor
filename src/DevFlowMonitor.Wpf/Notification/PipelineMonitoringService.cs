@@ -51,6 +51,31 @@ public sealed class PipelineMonitoringService(
     {
         try
         {
+            var settings = settingsService.Load();
+            var accountToken = settings.GitHubAccounts
+                .FirstOrDefault(account => account.Id == settings.ActiveGitHubAccountId)
+                ?.Token;
+            var token = string.IsNullOrWhiteSpace(accountToken)
+                ? settings.GitHubToken
+                : accountToken;
+            if (settings.ActiveGitHubAccountId is { } accountId
+                && accountId != Guid.Empty
+                && !string.IsNullOrWhiteSpace(token))
+            {
+                var synchronization = await apiClient.SynchronizeGitHubAccountAsync(
+                    settings.ApiUrl,
+                    accountId,
+                    token,
+                    fullHistory: false,
+                    ct);
+                if (!synchronization.IsSuccess)
+                {
+                    logger.LogWarning(
+                        "Incremental GitHub synchronization failed: {ErrorMessage}",
+                        synchronization.ErrorMessage);
+                }
+            }
+
             var result = await apiClient.GetPipelinesAsync(
                 page: 1,
                 pageSize: PipelinesPageSize,

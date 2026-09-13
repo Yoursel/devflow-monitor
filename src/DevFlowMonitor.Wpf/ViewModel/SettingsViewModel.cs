@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -18,6 +19,8 @@ public class SettingsViewModel : INotifyPropertyChanged
     private readonly IAppSettingsService _appSettingsService;
     private readonly IDevFlowApiClient _apiClient;
     private readonly IDesktopNotificationService _desktopNotifications;
+    private readonly AsyncRelayCommand _synchronizeAccountCommand;
+    private readonly AsyncRelayCommand _deleteAccountCommand;
     private bool _isLoadingSettings;
 
     public SettingsViewModel(
@@ -26,7 +29,16 @@ public class SettingsViewModel : INotifyPropertyChanged
         IDevFlowApiClient apiClient,
         IDesktopNotificationService desktopNotifications)
     {
-        CheckConnectionCommand = new AsyncRelayCommand(CheckConnection);
+        CheckConnectionCommand = new AsyncRelayCommand(CheckConnectionAsync);
+        AddAccountCommand = new AsyncRelayCommand(AddAccountAsync);
+        _synchronizeAccountCommand = new AsyncRelayCommand(
+            SynchronizeAccountAsync,
+            () => HasRegisteredGitHubAccount);
+        _deleteAccountCommand = new AsyncRelayCommand(
+            DeleteAccountAsync,
+            () => HasRegisteredGitHubAccount);
+        SynchronizeAccountCommand = _synchronizeAccountCommand;
+        DeleteAccountCommand = _deleteAccountCommand;
         SaveCommand = new RelayCommand(Save);
         TestNotificationCommand = new RelayCommand(ShowTestNotification);
 
@@ -48,6 +60,12 @@ public class SettingsViewModel : INotifyPropertyChanged
             ApiUrl = settings.ApiUrl;
             GitHubProfile = settings.GitHubProfile;
             GitHubToken = settings.GitHubToken;
+            GitHubAccounts.Clear();
+            foreach (var account in settings.GitHubAccounts.Where(account => account.Id != Guid.Empty))
+                GitHubAccounts.Add(account);
+            SelectedGitHubAccount = GitHubAccounts.FirstOrDefault(account =>
+                                           account.Id == settings.ActiveGitHubAccountId)
+                                       ?? GitHubAccounts.FirstOrDefault();
             NotificationsEnabled = settings.NotificationsEnabled;
             NotifyOnSuccess = settings.NotifyOnSuccess;
             PollingIntervalSeconds = settings.PollingIntervalSeconds;
@@ -136,6 +154,32 @@ public class SettingsViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<int> AvailablePollingIntervals { get; } = [30, 60, 120, 300];
 
+    public ObservableCollection<GitHubAccountSettings> GitHubAccounts { get; } = [];
+
+    private GitHubAccountSettings? _selectedGitHubAccount;
+    public bool HasRegisteredGitHubAccount =>
+        SelectedGitHubAccount is { Id: var accountId } && accountId != Guid.Empty;
+
+    public GitHubAccountSettings? SelectedGitHubAccount
+    {
+        get => _selectedGitHubAccount;
+        set
+        {
+            if (!SetField(ref _selectedGitHubAccount, value))
+                return;
+
+            OnPropertyChanged(nameof(HasRegisteredGitHubAccount));
+            _synchronizeAccountCommand.RaiseCanExecuteChanged();
+            _deleteAccountCommand.RaiseCanExecuteChanged();
+
+            if (value is null)
+                return;
+
+            GitHubProfile = value.Owner;
+            GitHubToken = value.Token;
+        }
+    }
+
     private ConnectionStatus _connectionStatus;
     public ConnectionStatus ConnectionStatus
     {
@@ -150,6 +194,13 @@ public class SettingsViewModel : INotifyPropertyChanged
         set => SetField(ref _statusMessage, value);
     }
 
+    private string _notificationStatusMessage = string.Empty;
+    public string NotificationStatusMessage
+    {
+        get => _notificationStatusMessage;
+        set => SetField(ref _notificationStatusMessage, value);
+    }
+
     private ApiHealthStatus? _apiStatus;
     public ApiHealthStatus? ApiStatus
     {
@@ -158,10 +209,13 @@ public class SettingsViewModel : INotifyPropertyChanged
     }
 
     public ICommand CheckConnectionCommand { get; }
+    public ICommand AddAccountCommand { get; }
+    public ICommand SynchronizeAccountCommand { get; }
+    public ICommand DeleteAccountCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand TestNotificationCommand { get; }
 
-    public async Task CheckConnection()
+    public async Task CheckConnectionAsync()
     {
         ConnectionStatus = ConnectionStatus.Testing;
         ApiStatus = null;
@@ -174,11 +228,110 @@ public class SettingsViewModel : INotifyPropertyChanged
         StatusMessage = result.Message;
     }
 
+    private async Task AddAccountAsync()
+    {
+        StatusMessage = "Добавление GitHub-аккаунта...";
+        var result = await _apiClient.AddGitHubAccountAsync(
+            ApiUrl,
+            GitHubProfile,
+            GitHubToken);
+
+        if (!result.IsSuccess)
+        {
+            ConnectionStatus = ConnectionStatus.Failed;
+            StatusMessage = result.ErrorMessage!;
+            return;
+        }
+
+        var response = result.Value!;
+        var localAccount = GitHubAccounts.FirstOrDefault(account => account.Id == response.Id)
+            ?? GitHubAccounts.FirstOrDefault(account =>
+                account.Id == Guid.Empty
+                && string.Equals(account.Owner, response.Owner, StringComparison.OrdinalIgnoreCase));
+        if (localAccount is null)
+        {
+            localAccount = new GitHubAccountSettings { Id = response.Id };
+            GitHubAccounts.Add(localAccount);
+        }
+
+        localAccount.Owner = response.Owner;
+        localAccount.Token = GitHubToken;
+        localAccount.LastSynchronizedAt = response.LastSynchronizedAt;
+        SelectedGitHubAccount = localAccount;
+        SaveCurrentSettings();
+        ConnectionStatus = ConnectionStatus.Connected;
+        await SynchronizeAccountAsync();
+    }
+
+    private async Task SynchronizeAccountAsync()
+    {
+        if (SelectedGitHubAccount is not { Id: var accountId } || accountId == Guid.Empty)
+        {
+            StatusMessage = "Сначала добавьте аккаунт";
+            return;
+        }
+
+        StatusMessage = $"Синхронизация {SelectedGitHubAccount.Owner}...";
+        var result = await _apiClient.SynchronizeGitHubAccountAsync(
+            ApiUrl,
+            accountId,
+            GitHubToken);
+
+        if (!result.IsSuccess)
+        {
+            StatusMessage = result.ErrorMessage!;
+            return;
+        }
+
+        var summary = result.Value!;
+        SelectedGitHubAccount.Token = GitHubToken;
+        SelectedGitHubAccount.LastSynchronizedAt = summary.SynchronizedAt;
+        SaveCurrentSettings();
+        StatusMessage = $"Синхронизировано: {summary.Repositories} реп., {summary.Runs} запусков, job: {summary.Jobs}";
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (SelectedGitHubAccount is null)
+        {
+            StatusMessage = "Выберите аккаунт";
+            return;
+        }
+
+        var account = SelectedGitHubAccount;
+        if (account.Id != Guid.Empty)
+        {
+            var result = await _apiClient.DeleteGitHubAccountAsync(ApiUrl, account.Id);
+            if (!result.IsSuccess)
+            {
+                StatusMessage = result.ErrorMessage!;
+                return;
+            }
+        }
+
+        GitHubAccounts.Remove(account);
+        SelectedGitHubAccount = GitHubAccounts.FirstOrDefault();
+        if (SelectedGitHubAccount is null)
+        {
+            GitHubProfile = string.Empty;
+            GitHubToken = string.Empty;
+        }
+
+        SaveCurrentSettings();
+        StatusMessage = "GitHub-аккаунт удалён";
+    }
+
     private void Save()
     {
         try
         {
-            _appSettingsService.Save(CreateCurrentSettings());
+            if (SelectedGitHubAccount is not null)
+            {
+                SelectedGitHubAccount.Owner = GitHubProfile;
+                SelectedGitHubAccount.Token = GitHubToken;
+            }
+
+            SaveCurrentSettings();
 
             StatusMessage = ConnectionStatus == ConnectionStatus.Connected
                 ? "Настройки успешно сохранены!"
@@ -200,14 +353,14 @@ public class SettingsViewModel : INotifyPropertyChanged
         {
             _desktopNotifications.Show(new PipelineNotification(
                 0,
-                "Тестовый pipeline",
+                "Тестовый пайплайн",
                 "main",
                 PipelineStatus.Success));
-            StatusMessage = "Тестовое уведомление отправлено";
+            NotificationStatusMessage = "Тестовое уведомление отправлено";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Не удалось показать уведомление: {ex.Message}";
+            NotificationStatusMessage = $"Не удалось показать уведомление: {ex.Message}";
             _logger.LogError(ex, "Failed to show test desktop notification");
         }
     }
@@ -230,7 +383,7 @@ public class SettingsViewModel : INotifyPropertyChanged
                                        or UnauthorizedAccessException
                                        or CryptographicException)
         {
-            StatusMessage = $"Не удалось сохранить настройки уведомлений: {ex.Message}";
+            NotificationStatusMessage = $"Не удалось сохранить настройки уведомлений: {ex.Message}";
             _logger.LogError(ex, "Failed to save notification settings");
         }
     }
@@ -240,10 +393,21 @@ public class SettingsViewModel : INotifyPropertyChanged
         ApiUrl = ApiUrl,
         GitHubProfile = GitHubProfile,
         GitHubToken = GitHubToken,
+        ActiveGitHubAccountId = SelectedGitHubAccount?.Id,
+        GitHubAccounts = GitHubAccounts.Select(account => new GitHubAccountSettings
+        {
+            Id = account.Id,
+            Owner = account.Owner,
+            Token = account.Token,
+            LastSynchronizedAt = account.LastSynchronizedAt
+        }).ToList(),
         NotificationsEnabled = NotificationsEnabled,
         NotifyOnSuccess = NotifyOnSuccess,
         PollingIntervalSeconds = PollingIntervalSeconds,
     };
+
+    private void SaveCurrentSettings() =>
+        _appSettingsService.Save(CreateCurrentSettings());
 
     #region OnPropertyChanged
 

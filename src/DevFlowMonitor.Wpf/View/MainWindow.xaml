@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModel="clr-namespace:DevFlowMonitor.Wpf.ViewModel"
         mc:Ignorable="d"
-        Title="MainWindow"
+        Title="DevFlow Monitor"
         Width="1100" Height="700"
         MinWidth="800" MinHeight="500"
         d:DataContext="{d:DesignInstance Type=viewModel:MainViewModel}">
@@ -26,7 +26,7 @@
                           Command="{Binding NavigateToDashboardCommand}">
                 <WrapPanel>
                     <Image Source="{StaticResource DashboardIcon}"/>
-                    <TextBlock>Dashboard</TextBlock>
+                    <TextBlock>Обзор</TextBlock>
                 </WrapPanel>
             </ToggleButton>
 
@@ -35,7 +35,16 @@
                           Command="{Binding NavigateToPipelinesCommand}">
                 <WrapPanel>
                     <Image Source="{StaticResource BranchIcon}"/>
-                    <TextBlock>Pipeline</TextBlock>
+                    <TextBlock>Запуски</TextBlock>
+                </WrapPanel>
+            </ToggleButton>
+
+            <ToggleButton Style="{StaticResource PanelItem}"
+                          IsChecked="{Binding IsAnalyticsActive, Mode=OneWay}"
+                          Command="{Binding NavigateToAnalyticsCommand}">
+                <WrapPanel>
+                    <Image Source="{StaticResource DashboardIcon}"/>
+                    <TextBlock>Аналитика</TextBlock>
                 </WrapPanel>
             </ToggleButton>
 
@@ -44,7 +53,7 @@
                           Command="{Binding NavigateToSettingsCommand}">
                 <WrapPanel>
                     <Image Source="{StaticResource SettingsIcon}"/>
-                    <TextBlock>Settings</TextBlock>
+                    <TextBlock>Настройки</TextBlock>
                 </WrapPanel>
             </ToggleButton>
         </StackPanel>

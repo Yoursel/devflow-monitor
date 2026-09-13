@@ -33,4 +33,45 @@ public class AsyncRelayCommandTests
         Assert.Same(expected, actual);
         Assert.False(command.IsExecuting);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_NotifiesWhenExecutionStateChanges()
+    {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var observedStates = new List<bool>();
+        var command = new AsyncRelayCommand(async () =>
+        {
+            started.SetResult();
+            await release.Task;
+        });
+        command.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(command.IsExecuting))
+                observedStates.Add(command.IsExecuting);
+        };
+
+        var execution = command.ExecuteAsync();
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.True(command.IsExecuting);
+        release.SetResult();
+        await execution;
+
+        Assert.Equal([true, false], observedStates);
+    }
+
+    [Fact]
+    public async Task GenericExecuteAsync_ExposesExecutionStateForBinding()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var command = new AsyncRelayCommand<int>(_ => release.Task);
+
+        var execution = command.ExecuteAsync(42);
+
+        Assert.True(command.IsExecuting);
+        release.SetResult();
+        await execution;
+        Assert.False(command.IsExecuting);
+    }
 }

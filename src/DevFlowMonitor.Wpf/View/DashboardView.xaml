@@ -11,64 +11,235 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Style="{StaticResource PageTitle}">Dashboard</TextBlock>
-
-        <Button Grid.Row="0"
-                Width="140"
-                HorizontalAlignment="Right"
-                Style="{StaticResource MainButton}"
-                Margin="0 0 10 10"
-                Command="{Binding RefreshCommand}">
-            <Button.Content>
+        <Grid Grid.Row="0" Margin="4 2 4 16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Style="{StaticResource PageTitle}" Margin="0" Text="Обзор"/>
+                <TextBlock Style="{StaticResource PageSubtitle}"
+                           Text="{Binding PageSubtitle}"/>
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Width="140"
+                    Margin="16 0 0 0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Style="{StaticResource MainButton}"
+                    Command="{Binding RefreshCommand}">
                 <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Image Source="{StaticResource RefreshIcon}"/>
-                    <TextBlock>Обновить</TextBlock>
+                    <TextBlock Text="Обновить"/>
                 </WrapPanel>
-            </Button.Content>
-        </Button>
-
-        <TextBlock Grid.Row="1" Style="{StaticResource SectionTitle}">Статистика за сегодня</TextBlock>
-
-        <ItemsControl Grid.Row="2"
-                      ItemsSource="{Binding StatusCards, UpdateSourceTrigger=PropertyChanged}"
-                      Style="{StaticResource SectionContent}"
-                      HorizontalAlignment="Stretch">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <UniformGrid Rows="1" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-        </ItemsControl>
-
-        <Grid Grid.Row="3">
-            <TextBlock Style="{StaticResource SectionTitle}">Последние запуски</TextBlock>
-            <TextBlock Text="{Binding StatusMessage}"
-                       HorizontalAlignment="Right"
-                       VerticalAlignment="Center"
-                       Foreground="{StaticResource MutedForeground}"
-                       FontSize="13"/>
+            </Button>
         </Grid>
 
-        <ListView Grid.Row="4"
-                  ItemsSource="{Binding PipelineRuns}"
-                  Style="{StaticResource PipelineListStyle}"
-                  ItemContainerStyle="{StaticResource PipelineRowStyle}">
-            <ListView.View>
-                <GridView ColumnHeaderContainerStyle="{StaticResource PipelineColumnHeaderStyle}">
-                    <GridViewColumn Header="СТАТУС" Width="120"
-                                    CellTemplate="{StaticResource StatusBadgeTemplate}" />
-                    <GridViewColumn Header="ПАЙПЛАЙН" Width="200"
-                                    DisplayMemberBinding="{Binding PipelineName}" />
-                    <GridViewColumn Header="ВЕТКА" Width="200"
-                                    DisplayMemberBinding="{Binding Branch}" />
-                    <GridViewColumn Header="ВРЕМЯ" Width="150"
-                                    DisplayMemberBinding="{Binding TimeAgo}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <ProgressBar Grid.Row="1" Style="{StaticResource LoadingBar}" Margin="4 0 4 12"/>
+
+        <WrapPanel Grid.Row="2" Margin="4 0 4 12">
+            <StackPanel Width="170" Margin="0 0 10 10">
+                <TextBlock Text="Начало периода" Style="{StaticResource FormFieldLabel}"/>
+                <DatePicker SelectedDate="{Binding PeriodStartDate}"
+                            IsEnabled="{Binding ArePeriodDatesEnabled}"
+                            Style="{StaticResource FormDatePicker}"/>
+            </StackPanel>
+            <StackPanel Width="170" Margin="0 0 10 10">
+                <TextBlock Text="Окончание периода" Style="{StaticResource FormFieldLabel}"/>
+                <DatePicker SelectedDate="{Binding PeriodEndDate}"
+                            IsEnabled="{Binding ArePeriodDatesEnabled}"
+                            Style="{StaticResource FormDatePicker}"/>
+            </StackPanel>
+            <Button Width="150"
+                    Margin="0 22 10 10"
+                    Command="{Binding ToggleAllTimeCommand}"
+                    Content="{Binding AllTimeButtonText}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAllTime}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource SuccessAccentBrush}"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource SuccessAccentBlockBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button Width="115"
+                    Margin="0 22 10 10"
+                    Style="{StaticResource MainButton}"
+                    Command="{Binding ApplyPeriodCommand}"
+                    Content="Применить"/>
+            <Button Width="105"
+                    Margin="0 22 0 10"
+                    Style="{StaticResource SecondaryButton}"
+                    Command="{Binding ResetPeriodCommand}"
+                    Content="Сбросить"/>
+        </WrapPanel>
+
+        <ScrollViewer Grid.Row="3"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="4 0 4 16">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="{Binding StatisticsTitle}"/>
+                <ItemsControl ItemsSource="{Binding StatusCards}"
+                              Style="{StaticResource SectionContent}"
+                              HorizontalAlignment="Stretch">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+                <Grid Margin="0 4 0 0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{Binding MetricsTitle}"/>
+                    <TextBlock Grid.Column="1"
+                               MaxWidth="460"
+                               Margin="16 0 0 20"
+                               HorizontalAlignment="Right"
+                               Text="{Binding MetricsStatusMessage}"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource FailedAccentTextBrush}"
+                               FontSize="12"/>
+                </Grid>
+
+                <UniformGrid Columns="4" Margin="0 0 0 12">
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="УСПЕШНОСТЬ" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" FontSize="20"><TextBlock.Text><MultiBinding StringFormat="{}{0} из {1} · {2:F1}%"><Binding Path="Metrics.SuccessfulRuns"/><Binding Path="Metrics.TotalRuns"/><Binding Path="Metrics.SuccessRate"/></MultiBinding></TextBlock.Text></TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="ОШИБКИ" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" FontSize="20"><TextBlock.Text><MultiBinding StringFormat="{}{0} из {1} · {2:F1}%"><Binding Path="Metrics.FailedRuns"/><Binding Path="Metrics.TotalRuns"/><Binding Path="Metrics.FailureRate"/></MultiBinding></TextBlock.Text></TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="СРЕДНЕЕ ВРЕМЯ" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="{Binding Metrics.AverageDurationSeconds, StringFormat={}{0:F0} сек., TargetNullValue=—, FallbackValue=—}" FontSize="20"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="МАКС. ВРЕМЯ" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="{Binding Metrics.MaximumDurationSeconds, StringFormat={}{0:F0} сек., TargetNullValue=—, FallbackValue=—}" FontSize="20"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="ЗАПУСКИ С ПОВТОРНОЙ ПОПЫТКОЙ" TextWrapping="Wrap" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" FontSize="20"><TextBlock.Text><MultiBinding StringFormat="{}{0} из {1} · {2:F1}%"><Binding Path="Metrics.RetriedRuns"/><Binding Path="Metrics.TotalRuns"/><Binding Path="Metrics.RetryRate"/></MultiBinding></TextBlock.Text></TextBlock>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="ИЗМЕНЕНИЕ УСПЕШНОСТИ" TextWrapping="Wrap" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="{Binding Metrics.SuccessRateChange, StringFormat={}{0:+0.0;-0.0;0.0} п.п., TargetNullValue=—, FallbackValue=—}" FontSize="20"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="ПРОБЛЕМНЫЙ ПАЙПЛАЙН" TextWrapping="Wrap" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}"
+                                       Margin="0 7 0 0"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       LineHeight="18"
+                                       Text="{Binding TopFailingWorkflowName}"
+                                       TextWrapping="Wrap"
+                                       ToolTip="{Binding TopFailingWorkflowName}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}"
+                                       Margin="0 4 0 0"
+                                       FontSize="12"
+                                       Foreground="{StaticResource FailedAccentTextBrush}"
+                                       Text="{Binding TopFailingWorkflowSummary}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource AnalyticsMetricCard}">
+                        <StackPanel Style="{StaticResource AnalyticsMetricContent}">
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}" Text="БОЛЬШЕ ВСЕГО СБОЕВ В JOB" TextWrapping="Wrap" Foreground="{StaticResource MutedForeground}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}"
+                                       Margin="0 7 0 0"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       LineHeight="18"
+                                       Text="{Binding TopFailingJobName}"
+                                       TextWrapping="Wrap"
+                                       ToolTip="{Binding TopFailingJobName}"/>
+                            <TextBlock Style="{StaticResource AnalyticsMetricText}"
+                                       Margin="0 4 0 0"
+                                       FontSize="12"
+                                       Foreground="{StaticResource FailedAccentTextBrush}"
+                                       Text="{Binding TopFailingJobSummary}"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="Последние запуски"/>
+                    <TextBlock Grid.Column="1"
+                               Margin="16 0 0 20"
+                               Text="{Binding StatusMessage}"
+                               TextWrapping="Wrap"
+                               Foreground="{StaticResource MutedForeground}"
+                               FontSize="12"/>
+                </Grid>
+
+                <Grid MinHeight="260">
+                    <ListView ItemsSource="{Binding PipelineRuns}"
+                              Height="300"
+                              Style="{StaticResource PipelineListStyle}"
+                              ItemContainerStyle="{StaticResource PipelineRowStyle}">
+                        <ListView.View>
+                            <GridView ColumnHeaderContainerStyle="{StaticResource PipelineColumnHeaderStyle}">
+                                <GridViewColumn Header="СТАТУС" Width="120" CellTemplate="{StaticResource StatusBadgeTemplate}"/>
+                                <GridViewColumn Header="ПАЙПЛАЙН" Width="220" DisplayMemberBinding="{Binding PipelineName}"/>
+                                <GridViewColumn Header="ВЕТКА" Width="180" DisplayMemberBinding="{Binding Branch}"/>
+                                <GridViewColumn Header="ВРЕМЯ" Width="150" DisplayMemberBinding="{Binding TimeAgo}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <Border Padding="20" Background="{StaticResource CardBackground}" IsHitTestVisible="False">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PipelineRuns.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock HorizontalAlignment="Center" FontSize="15" Text="Запусков пока нет"/>
+                            <TextBlock Margin="0 6 0 0"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       Foreground="{StaticResource MutedForeground}"
+                                       Text="Добавьте GitHub-аккаунт в настройках и выполните синхронизацию"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>
